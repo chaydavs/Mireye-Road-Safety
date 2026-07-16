@@ -191,5 +191,47 @@ are a terminal resume state; commit every 100 coords. Rejected: kill criterion i
 **data-qa (50-pt trial):** PASS — kill gate clear (worst scoring field 14% null), provenance 100%
 complete on present values, 0 discards.
 
-**⏳ IN PROGRESS:** full town-scale fetch (~7,877 pts) running in background. Pending: final audit
-numbers, data-qa on full provenance, kill check, commit.
+**⏳ IN PROGRESS:** full town-scale fetch (~7,877 pts) running in background (~25 pts/min, ETA a few
+hr; watchdog guarding). Pending on completion: final audit numbers, data-qa on full provenance,
+kill check, and a follow-up commit noting results.
+
+---
+
+## Session 4 — Score & map  (built in parallel against the growing cache, per user)
+**Date:** 2026-07-16 · **Commit:** `4e8aa46`
+
+**Done**
+- ✅ `src/score.py` — PRD §6 scoring table (W .30/S .20/C .20/T .20/G .10) with threshold lookups in
+  one visible dict, **grounded in the real Mireye value formats** (inspected the cache, not guessed).
+  Missing components drop out of a factor's average (never 0); absent factors renormalize the
+  weights. Confidence grade A/B/C from provenance confidence + traffic fallback. Outputs
+  `scores.parquet` + Folium `output/map.html`. + `tests/test_score.py` (8 lookup/grade tests first).
+- ✅ `src/agents/why_card.py` — top-20 cited why-cards; hard rule enforced (a line is emitted only
+  from a provenance row with source+source_url; `/v1/ask` narrative is a labeled supplement).
+
+**Ran on partial data (833 segments so far):**
+- Scores **34–60, median 49, well-spread** (modal value 2% ≪ 30% degeneracy threshold → not
+  degenerate). Grades: 648 C, 185 B, **0 A**.
+- Why-cards: **60/60 cited lines carry a source URL**; 10/20 `/ask` narratives (rest degraded
+  gracefully under fetch contention).
+
+**Findings (for the shortfalls report):**
+- **0 A-grades** — Mireye caps confidence on STATSGO-gap-filled soil, so ~no segment is all-high on
+  the 11 W/S fields. Honest-by-construction (PRD §4/§10 SSURGO caveat), not a bug.
+- Climate (C) and shrink-swell (S) are **near-constant within one county** → little differentiation;
+  the risk signal is water + terrain + traffic (the PRD moisture-first thesis).
+- NOAA precip/freeze gap-fill NOT integrated (PRD §10 shortfall); truck-share uplift deferred.
+
+**data-qa on scores.parquet:** all 6 checks PASS (well-spread, valid domains, top3 well-formed;
+54% used the housing-density proxy — a real finding; 0 A-grades as expected).
+
+**code-reviewer pass (findings addressed):** Fixed a **hard-rule violation** — the why-card would
+have printed the housing-density proxy as a false "AADT (VDOT)" claim; now the traffic driver is
+tagged `traffic_aadt` (cited to VDOT) vs `housing_units_density_per_km2` (cited to its own Mireye
+provenance row). Made grade PRD-faithful (missing W/S component lowers A→B), defensive against
+unknown confidence strings, and score `None` (not a fabricated 0) when no factor is mappable;
+derived renorm weights from `FACTORS` instead of re-hardcoding. Added `tests/test_why_card.py`
+(the hard-rule safety property + exact segment-id match). 39 tests pass, ruff clean.
+
+**Pending:** full-data re-run of score + why_card once the fetch completes (top-20 why-cards are
+high-AADT arterials, unaffected by the proxy fix; `why_cards.json` regenerates on full data).
