@@ -30,11 +30,15 @@ ASK_URL = "https://api.mireye.com/v1/ask"
 SYSTEM = (
     "You are the Subgrade county copilot for a public-works engineer. Subgrade ranks road segments "
     "by ground-driven deterioration RISK (not current condition, not safety). Answer ONLY from the "
-    "two tools: query_scores (scored segments + their cited provenance) and mireye_lookup (live "
-    "Mireye ground/climate data at a coordinate). Every factual claim must come from a tool result, "
-    "with its source. If the tools do not answer the question — especially predictions of WHEN a "
-    "road will fail, or dates in the future — say plainly that the data cannot answer it and why. "
-    "Never invent soil types, scores, or forecasts. Be concise."
+    "two tools: query_scores (scored segments + cited provenance + a remaining-service-life estimate) "
+    "and mireye_lookup (live Mireye ground/climate data at a coordinate). Every factual claim must "
+    "come from a tool result, with its source. "
+    "WHEN a road will reach poor condition: give the estimated YEAR RANGE from query_scores "
+    "(rsl_year_low-rsl_year_high) and its basis (rsl_basis: hpms/vdot/prior; 'prior' = treatment "
+    "year unknown, screening-grade). NEVER give a single exact year or date — if pushed for one, "
+    "refuse and explain it is a transparent screening estimate, not a prediction. For other future "
+    "questions the data cannot cover, say so plainly. Never invent soil types, scores, or forecasts. "
+    "Be concise."
 )
 
 TOOLS = [
@@ -71,9 +75,15 @@ TOOLS = [
 
 
 def _seg_summary(r) -> dict:
-    return {"segment_id": int(r["segment_id"]), "route_name": r["route_name"],
-            "score": float(r["score"]), "grade": r["grade"],
-            "traffic_source": r["traffic_source"], "top_drivers": json.loads(r["top3"])}
+    out = {"segment_id": int(r["segment_id"]), "route_name": r["route_name"],
+           "score": float(r["score"]), "grade": r["grade"],
+           "traffic_source": r["traffic_source"], "top_drivers": json.loads(r["top3"])}
+    if "rsl_year_low" in r and pd.notna(r.get("rsl_year_low")):
+        out["reach_poor_condition_year_range"] = [int(r["rsl_year_low"]), int(r["rsl_year_high"])]
+        out["rsl_basis"] = r["rsl_basis"]  # hpms | vdot | prior (prior = treatment year unknown)
+        if pd.notna(r.get("rsl_last_treated")):
+            out["last_treated_year"] = int(r["rsl_last_treated"])
+    return out
 
 
 def _provenance_for(conn, segment_id: int, fields: list[str]) -> dict:
