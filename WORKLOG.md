@@ -235,3 +235,45 @@ derived renorm weights from `FACTORS` instead of re-hardcoding. Added `tests/tes
 
 **Pending:** full-data re-run of score + why_card once the fetch completes (top-20 why-cards are
 high-AADT arterials, unaffected by the proxy fix; `why_cards.json` regenerates on full data).
+
+---
+
+## Session 5 — Validation (LTPP)
+**Date:** 2026-07-16 · **Commit:** `a1615c1`
+
+**Data:** InfoPave gates Analysis-Ready data behind its portal, but the Standard Data Release is on
+CloudFront per state (`.../SDR/39/By_State_Province/SDR39_<ST>.ZIP`, Access `.accdb`). Pulled VA +
+5 climate-adjacent states (MD, NC, PA, TN, WV), fixed up front (not chosen for results). Read via
+`mdbtools` (`brew install mdbtools`; reads `.accdb`). matplotlib added for the chart; scipy avoided
+(numpy + a permutation test).
+
+**Done**
+- ✅ `src/validate.py` + `tests/test_validate.py` (3 tests). Extracts per-section deterioration
+  (MRI slope **within a CONSTRUCTION_NO cycle** — see below), age (INV_AGE), traffic (TRF_ESAL),
+  coords (SECTION_COORDINATES); fetches Mireye W+S+G ground at each section (own cache, no contention
+  with the town fetch); regresses deterioration ~ ground + age + log(traffic); permutation test
+  doubles as the shuffled-label sanity check. Chart `output/ltpp_validation.png`; result appended to
+  `data/audit.json`. `ruff` clean, `pytest` 3/3.
+
+**Methodology bug caught (ERRORS.md):** first pass fit ONE MRI-vs-time slope across all visits, so a
+mid-window overlay (MRI drops after resurfacing) flipped 94% of slopes negative. Fixed to fit within
+a construction cycle → 94% correctly positive.
+
+**Result (n=51 sections) — honest, weak-but-directional (PRD §11 planned for this):**
+- Top-quartile ground-risk sections deteriorate ~**17% faster** (median 0.0127 vs 0.0109 m/km/yr);
+  regression ground coefficient **positive** but **NOT significant** (permutation p=**0.26**, seeded).
+- **Shuffled-label sanity check passes**: shuffled-coef mean ≈ −1e-05 (~0) → no pipeline leakage.
+- **Did NOT tune anything to manufacture significance** (Session 5 non-goal).
+- Interpretation (a finding, not a failure): LTPP sections are Interstate/arterial with engineered,
+  often-stabilized subgrades — little native-ground variation — while Subgrade's signal is strongest
+  on the *local* roads LTPP barely samples. This IS the PRD's thesis (§2, §10), evidenced.
+
+**code-reviewer pass (findings addressed):** confirmed the science is clean (no p-hacking,
+permutation correct, controls used, null handling correct). Fixed: **live catalog validation before
+fetch** (CLAUDE.md CRITICAL — was missing, same class as Session 3); a **provenance guard** so an
+unsourced value can't enter the regression; **seeded permutation** (p now reproducible); weights
+read from `score.FACTORS`. Added 4 tests (planted-signal → significant + shuffled ~0; pure-noise →
+not significant; reproducibility; `score_ground` drops unsourced/null, never zero). 43 tests, ruff clean.
+
+**Deferred:** HPMS spot check (PRD item 2) — a lighter rank-correlation vs published IRI; the LTPP
+calibration test is the stronger, headline evidence and is complete. Noted for follow-up.
