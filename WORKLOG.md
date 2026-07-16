@@ -149,3 +149,47 @@ geometries → **fixed**: dedupe exact-duplicate TIGER geometries at load (17,20
 - ⏸ Snap QA: where nearest_road_name disagrees with the segment route → re-snap once then discard,
   logged; leave a named function boundary for the QA agent.
 - ⚠️ Kill: if any core scoring field (W/S rows) > 40% nulls county-wide, STOP and report.
+
+---
+
+## Session 3 — Fetch
+**Date:** 2026-07-16 · **Commit:** `<pending>` (code done; full fetch running in background)
+
+**⚠️ 7-hour hang (fixed):** the fetch shared one `httpx.Client` across 4 threads; when Mireye's
+fly.io app cycled, reused keepalive sockets went half-open, the per-request timeout never fired,
+and httpcore's shared pool lock stalled all threads (0% CPU, 7 hr). Diagnosed via `ps` (4 s CPU in
+7 hr) + `lsof` (4 idle ESTABLISHED sockets + open sqlite journal). Fixed: **per-thread clients**,
+explicit connect/read timeout, 15 s keepalive expiry, commits every 25 coords. Verified (direct
+calls + resume smoke complete cleanly). See `ERRORS.md`. Session 4 built in parallel against the
+growing cache per user direction.
+
+**Done (code)**
+- ✅ `src/fetch.py` (functions only, no ORM, ≤4 concurrent, one 429 backoff) + `tests/test_fetch.py`
+  (10 tests). `ruff` clean. SQLite cache keyed by `(round(lat,5), round(lon,5), field)`; resumable
+  (`already_done` = provenance ∪ qa_log discards); provenance store; `audit.json`; distance-based
+  snap QA with the named `qa_triage_decision` boundary. Reuses `probe` field list + fetch call.
+
+**Scope (user):** trimmed from eastern Loudoun to **town-scale Leesburg+Ashburn** bbox
+`(-77.57,39.01,-77.48,39.12)` — ~7,877 pts (~1 hr), because measured cold 4-concurrent throughput
+is ~122 calls/min (not the ~400 my Session 2 note assumed), making full eastern ~2–3.4 hr.
+
+**Two design pivots (documented in ERRORS.md), both evidence-driven:**
+1. **Snap QA is distance-based, not name-based.** Literal "name disagreement → discard" discarded
+   28% of points that were the SAME road named differently (Overture "East Market Street" vs TIGER
+   "State Rte 7 Bus"). Now: discard only if far from any road; name mismatch → kept low-confidence
+   flag. This is a real Mireye-integration finding for the shortfalls report.
+2. **`derive_status` honors Mireye's `"absent"` status** (semantic absence) → absent-semantic, not
+   failed. Fixed a 96%→0% mislabel on `nearest_waterbody_name`.
+
+**code-reviewer pass (findings addressed):** added **live catalog validation** before fetch
+(CLAUDE.md CRITICAL — was missing); audit now emits per-field `status_distribution` and bases the
+kill on **failed-rate** (semantic absence no longer trips it); provenance-completeness guard
+(present value missing source/url/fetched_at → downgraded, "no provenance row, no value"); discards
+are a terminal resume state; commit every 100 coords. Rejected: kill criterion is NOT scope creep
+(Session 3 spec mandates it). Added tests for `key`, `write_provenance`, `build_audit` kill logic.
+
+**data-qa (50-pt trial):** PASS — kill gate clear (worst scoring field 14% null), provenance 100%
+complete on present values, 0 discards.
+
+**⏳ IN PROGRESS:** full town-scale fetch (~7,877 pts) running in background. Pending: final audit
+numbers, data-qa on full provenance, kill check, commit.
