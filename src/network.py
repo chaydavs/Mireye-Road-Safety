@@ -114,8 +114,9 @@ def load_centerlines(path: Path) -> gpd.GeoDataFrame:
     g = g[~g.geometry.apply(lambda geom: geom.wkb).duplicated()]
     g = g.rename(columns={"FULLNAME": "route_name", "MTFCC": "mtfcc"})
     g = g.to_crs(WORK_CRS)
-    # TODO(session3): TIGER does not mark bridge spans, so bridge exclusion is deferred to the
-    # fetch stage via Mireye nearest_bridge_name QA (PRD section 5 non-goal: no bridges).
+    # KNOWN LIMITATION (see FUTURE.md): TIGER does not mark bridge spans, and bridge exclusion
+    # (PRD section 5 non-goal) is NOT implemented — a robust filter needs a bridge-distance field
+    # we don't fetch. `nearest_bridge_name` is fetched as the intended input for this future QA.
     return g[["route_name", "mtfcc", "geometry"]]
 
 

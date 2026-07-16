@@ -123,8 +123,8 @@ def derive_status(field: str, value, api_status, null_meaning_map: dict) -> str:
     return "failed"
 
 
-def _road_tokens(name: str | None) -> set[str]:
-    if not name:
+def _road_tokens(name) -> set[str]:
+    if not isinstance(name, str) or not name:  # None, or a float NaN (unnamed road)
         return set()
     toks = set(re.findall(r"[A-Z0-9]+", name.upper()))
     return toks - ROAD_SUFFIXES
@@ -144,6 +144,9 @@ def qa_triage_decision(
     Returns (decision, reason); decision in keep | keep_flag | resnap."""
     if nearest_road_distance_m is not None and nearest_road_distance_m > SNAP_MAX_DIST_M:
         return "resnap", "far_from_road"
+    # Non-string names (None, or a float NaN for an unnamed road) count as missing, not a mismatch.
+    route_name = route_name if isinstance(route_name, str) else None
+    nearest_road_name = nearest_road_name if isinstance(nearest_road_name, str) else None
     if not route_name or not nearest_road_name:
         return "keep", "unnamed_or_missing"
     if _road_tokens(nearest_road_name) & _road_tokens(route_name):
@@ -347,10 +350,17 @@ def build_audit(conn, points, stats) -> dict:
 
     ws_failed = {f: failed_rate.get(f, 1.0) for f in SCORING_WS_FIELDS}
     over = {f: r for f, r in ws_failed.items() if r > NULL_KILL_THRESHOLD}
+    # Cumulative corridor cost: distinct coordinates ever fetched (the real /v1/fetch call count to
+    # cover the corridor), independent of how many resumed runs it took. This is the headline
+    # number for the corridor critique (point API -> one call per sample point).
+    total_coord_fetches = conn.execute(
+        "SELECT COUNT(*) FROM (SELECT DISTINCT lat5, lon5 FROM cache)"
+    ).fetchone()[0]
     return {
         "scope": SCOPE_LABEL,
         "points_in_scope": len(points),
-        "calls_made": stats["calls"],                 # network coordinate-fetches
+        "total_coordinate_fetches": total_coord_fetches,  # cumulative corridor cost (point API)
+        "calls_made": stats["calls"],                 # network coordinate-fetches THIS run
         "points_from_cache": stats["cache_hits"],     # points served from a prior run's cache
         "rate_limited": stats["rate_limited"],
         "wall_seconds": round(stats["wall_seconds"], 1),

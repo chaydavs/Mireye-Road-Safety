@@ -313,3 +313,42 @@ creep — deleted per the non-goal); completed the AADT why-card citation with i
 (AADT is a VDOT join, not a Mireye provenance row — now cited to a real, URL'd federal source);
 added `tests/test_copilot.py` for the offline `query_scores` tool. Confirmed clean: exactly two
 tools, no auth/deploy, no null-as-zero, copilot can't bypass tool results. 54 tests, ruff clean.
+
+---
+
+## Session 7 — Package
+**Date:** 2026-07-16 · **Commit:** _(pending)_
+
+**Full-data finalization (town fetch completed all 7,877 points):**
+- ⚠️ **Bug caught on the full run:** fetch completed all points but crashed in snap-QA — an unnamed
+  road's `route_name` is a float NaN, and `if not route_name` doesn't catch NaN (truthy) →
+  `_road_tokens(NaN).upper()` raised. The 50/1090-pt smokes never hit an unnamed segment. Fixed
+  (coerce non-str names to None; `_road_tokens` rejects non-strings; regression test). Logged in
+  ERRORS.md. Fetch data was safe (cached) — only QA re-ran.
+- ✅ Added `total_coordinate_fetches` to the audit (the honest corridor cost, from the cache).
+- ✅ Refreshed on full data: `scores.parquet` (**2,644 segments**, 32–62, 1% modal, 0 A / 938 B /
+  1,706 C), full-town `map.html`, `why_cards.json` (20 cards, 60/60 lines URL-cited), `audit.json`,
+  `shortfalls.md`. Kill criterion did NOT fire (max W/S failed-rate 6.2% ≪ 40%).
+
+**Corridor cost (headline evidence):** **7,870 Mireye `/v1/fetch` calls to cover 7,877 sample
+points** (≈ one call per point; 7 deduped), **0 rate-limiting** — for one corridor of one county.
+
+**Docs**
+- ✅ `README.md` — rubric-structured (problem/user → why Mireye vs Google/GIS/LLM → 5-command run →
+  what worked + embedded LTPP chart → shortfalls → corridor critique with the real call count).
+- ✅ `WALKTHROUGH.md` — 10-step 30-min demo script.
+- ✅ `docs/shortfalls.md` — agent-drafted, refreshed on full audit numbers.
+- ✅ `ERRORS.md` verified honest + current (**17 caught mistakes**).
+
+**Final code-reviewer sweep (whole repo, dead code):** essentially clean — no orphan functions,
+unread constants, unused params, or unreachable branches. Two findings addressed: (1) a stale
+`TODO(session3)` falsely claimed bridge exclusion was done → rewrote as an honest known-limitation,
+added to `FUTURE.md` + README + `ERRORS.md` (bridge QA needs a bridge-distance field Mireye lacks;
+kept `nearest_bridge_name` as the documented input); (2) added `tests/test_audit_narrator.py` for
+the `compact_audit` filter. `FUTURE.md` created (bridges, HPMS, NOAA gap-fill, truck-share, weight
+calibration, scale, MCP copilot).
+
+**Verified:** all README-referenced files exist, the 11 runtime deps import, **56 tests pass**, ruff
+clean. `ERRORS.md`: **18 caught mistakes**.
+
+**BUILD COMPLETE** — Sessions 0–7 done. Non-goal honored: no new features; anything tempting → FUTURE.

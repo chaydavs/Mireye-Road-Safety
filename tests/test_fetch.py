@@ -18,6 +18,9 @@ def _mem_provenance_db():
         "source_url TEXT, fetched_at TEXT, confidence TEXT, status TEXT, "
         "PRIMARY KEY(point_id, field))"
     )
+    # build_audit also reads the cache table for the corridor-cost count
+    conn.execute("CREATE TABLE cache(lat5 REAL, lon5 REAL, field TEXT, payload TEXT, "
+                 "PRIMARY KEY(lat5, lon5, field))")
     return conn
 
 
@@ -62,6 +65,14 @@ def test_qa_triage_far_from_road_resnaps():
 def test_qa_triage_missing_name_keeps():
     assert fetch.qa_triage_decision(None, "Some Rd", 0.0)[0] == "keep"
     assert fetch.qa_triage_decision("Some Rd", None, 3.0)[0] == "keep"
+
+
+def test_qa_triage_nan_route_name_is_unnamed_not_crash():
+    # unnamed road -> route_name is a float NaN (pandas); must be treated as missing, not crash
+    nan = float("nan")
+    decision, reason = fetch.qa_triage_decision("Waxpool Rd", nan, 2.0)
+    assert decision == "keep" and reason == "unnamed_or_missing"
+    assert fetch._road_tokens(nan) == set()  # defensive: non-string -> empty
 
 
 def test_payloads_from_failed_call_all_failed():

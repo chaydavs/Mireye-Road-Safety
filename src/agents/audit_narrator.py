@@ -32,16 +32,19 @@ SYSTEM = (
 )
 
 
+def compact_audit(audit: dict) -> dict:
+    """Drop the bulky per-field status dump so the LTPP validation result and null rates always fit
+    the prompt untruncated — otherwise the narrator can't see the LTPP test."""
+    return {k: v for k, v in audit.items() if k != "status_distribution_per_field"}
+
+
 def main() -> int:
     if not AUDIT.exists():
         print(f"No {AUDIT} yet; run the fetch/validate stages first.")
         return 1
     audit = json.loads(AUDIT.read_text())
     errors = ERRORS.read_text() if ERRORS.exists() else "(none)"
-
-    # Compact view: drop the bulky per-field status dump so the LTPP validation result and null
-    # rates always fit (untruncated) — otherwise the narrator can't see the LTPP test.
-    compact = {k: v for k, v in audit.items() if k != "status_distribution_per_field"}
+    compact = compact_audit(audit)
 
     prompt = (
         "Draft the shortfalls report. Audit JSON:\n```json\n"
