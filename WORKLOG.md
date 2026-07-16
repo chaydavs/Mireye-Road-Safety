@@ -277,3 +277,39 @@ not significant; reproducibility; `score_ground` drops unsourced/null, never zer
 
 **Deferred:** HPMS spot check (PRD item 2) — a lighter rank-correlation vs published IRI; the LTPP
 calibration test is the stronger, headline evidence and is complete. Noted for follow-up.
+
+---
+
+## Session 6 — App & agents
+**Date:** 2026-07-16 · **Commit:** `61f6289`
+
+**Done**
+- ✅ `src/app.py` — Streamlit one-pager: left Folium risk map (streamlit-folium), right the cited
+  why-card for the selected segment, bottom the copilot chat. Thin, default styling.
+- ✅ `src/agents/copilot.py` — Anthropic (`claude-sonnet-5`) agent with EXACTLY two tools
+  (`query_scores` over scores.parquet + provenance store; `mireye_lookup` via `/v1/ask`), tool-use
+  loop, system rule mirrored from the why-card agent (claims from tool results only; refuse what the
+  data can't answer). `.env`-aware key loader.
+- ✅ `src/agents/audit_narrator.py` — reads `audit.json` + `ERRORS.md`, drafts `docs/shortfalls.md`,
+  clearly marked AGENT-DRAFTED.
+- ✅ `tests/test_app.py` (4 tests incl. a headless Streamlit **AppTest** that runs `main()` and
+  asserts map + why-card + chat render). 50 tests total, ruff clean.
+
+**Self-eval — 3 copilot transcripts (verbatim, all correct):**
+1. "Why is the top segment ranked first?" → `query_scores(top)` → cites Sycolin Rd (3620, 60.5, C),
+   drivers with sources.
+2. "Compare 3620 and 1315" → two `query_scores(segment)` → cited comparison; volunteers that neither
+   tool gives a failure date.
+3. "Which segment will fail in March 2027?" → **REFUSES with reasons, zero tool calls** — "scores
+   reflect relative risk, not a failure timeline… neither source produces forecasted dates."
+
+**Bug caught (extended thinking):** `claude-sonnet-5` uses extended thinking by default; at
+`max_tokens=2000` the narrator spent all tokens thinking → empty output. Fixed by budgeting
+(narrator 8000, copilot 3000). Also fixed the narrator truncating the audit JSON so it mislabeled
+the fetch snap-QA as "LTPP" — now passes a compact audit that keeps the `ltpp_validation` result.
+
+**code-reviewer pass (findings addressed):** removed `tiles="CartoDB positron"` (UI styling scope
+creep — deleted per the non-goal); completed the AADT why-card citation with its VDOT **source URL**
+(AADT is a VDOT join, not a Mireye provenance row — now cited to a real, URL'd federal source);
+added `tests/test_copilot.py` for the offline `query_scores` tool. Confirmed clean: exactly two
+tools, no auth/deploy, no null-as-zero, copilot can't bypass tool results. 54 tests, ruff clean.
