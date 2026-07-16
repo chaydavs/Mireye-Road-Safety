@@ -176,6 +176,11 @@ nearest_road_* fields serve as snap QA: if the nearest road's name/class disagre
 | NOAA NCEI US Climate Normals | Annual precipitation and freeze proxies (the two variables Mireye lacks) | https://www.ncei.noaa.gov/products/land-based-station/us-climate-normals | Open |
 | OpenStreetMap / Geofabrik extracts | Fallback centerlines if VDOT geometry is awkward | https://download.geofabrik.de/ | ODbL |
 | Overture Maps | Reference for road schema (also Mireye's own road source) | https://overturemaps.org/ | Open |
+| NWS API | Active flood/flash-flood/winter-storm alert polygons; last-7-day precipitation | https://api.weather.gov (no key; User-Agent header required) | Open |
+| USGS Water Services | Real-time instantaneous stream gauge discharge for the live stress layer | https://waterservices.usgs.gov (no key) | Open |
+| VDOT paving program | Recently treated routes and treatment year, for service-life age | Published annually on vdot.virginia.gov | Open |
+| FHWA HPMS (additional items) | Year of last improvement/construction as a model input (previously validation-only); verify item names in the Field Manual | https://www.fhwa.dot.gov/policyinformation/hpms/fieldmanual/ | Open |
+| FHWA pavement preservation guidance | Treatment lifespan ranges (chip seal, overlay, reconstruction); a cited lookup table, not an API | Literature values, source-commented per row in code | Open |
 
 ### Software (all open source)
 
@@ -217,7 +222,9 @@ nearest_road_* fields serve as snap QA: if the nearest road's name/class disagre
 2. **No precipitation field.** The climate layer carries temperature, snow, solar, and wind, but not annual rainfall, despite precipitation ranking among the top deterioration drivers. Filled from NOAA in this build.
 3. **No freeze-thaw cycle count.** Snow-cover days is only a proxy for the freeze-thaw cycling that damages pavement. Also fillable from NOAA normals.
 4. **SSURGO scale caveats.** Reconnaissance-scale soil mapping with STATSGO gap-fill; Mireye's confidence caps handle this honestly, and Subgrade propagates them, but users should know segment scores are screening-grade, not geotech-grade.
-5. To be appended from the audit log: measured null rates per field, rate-limit behavior at pipeline volume, and any surprises.
+5. **No real-time tier.** Mireye serves slow truth: its freshest fields refresh daily and most refresh monthly to yearly, which is correct for soil and flood zones but leaves no live layer at all. The moment this use case needed "what is happening right now" (active flood warnings, current gauge levels, this week's rain), the pipeline had to leave Mireye for NWS and USGS directly. A live exposure tier, or webhooks on value change, is a natural product extension; the watch list in this build is a working demo of what it would power.
+6. **Source-attribution drift (confirmed by the build).** The live API stamps sources that do not match the documented catalog. Verified example: `bedrock_depth_cm` is documented as "from USDA STATSGO," but live responses in this corridor return **`NRCS_gNATSGO`** (shallow) and **`PELLETIER_DTB`** (deep-bedrock) — never `USDA_STATSGO`. Because provenance is load-bearing here, a documented-vs-live source mismatch matters: a why-card citing the catalog source would be wrong. Subgrade stores the *live* source, so its citations are correct, but the catalog should be reconciled with what `/v1/fetch` actually returns.
+7. To be appended from the audit log: measured null rates per field, rate-limit behavior at pipeline volume, and any further surprises.
 
 ## 11. Risks and mitigations
 
