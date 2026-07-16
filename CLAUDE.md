@@ -31,6 +31,12 @@ For any task, all three must hold before reporting done:
 3. the session's stated end-to-end check runs successfully.
 Do not report done before all three.
 
+## Work log (session continuity)
+This build runs as **one continuous conversation** — do NOT `/clear` between sessions.
+At the start of each session, read `WORKLOG.md` and `ERRORS.md` to reload prior state.
+At the end of each session, append that session's entry to `WORKLOG.md` (done / decided /
+kill-criteria status / what's left for the next session).
+
 ## Error log
 When you make an error and catch it (or the user catches it), append **one line** to
 `ERRORS.md`: what was wrong, how it was caught. Do not editorialize.
