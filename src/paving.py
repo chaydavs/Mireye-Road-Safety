@@ -18,8 +18,9 @@ import sys
 from pathlib import Path
 
 import geopandas as gpd
-import httpx
 import pandas as pd
+from arcgis.features import FeatureLayer
+from arcgis.gis import GIS
 
 SRC = Path(__file__).resolve().parent
 sys.path.insert(0, str(SRC))
@@ -32,12 +33,19 @@ TREATMENT_OUT = DATA / "segment_treatment.parquet"
 PLAN_OUT = DATA / "plan_comparison.parquet"
 
 ARCGIS = "https://services.arcgis.com/p5v98VHDX9Atv3l7/arcgis/rest/services"
-COMPLETED_URL = f"{ARCGIS}/Statewide_Paving_Status_Map_(Public_View)/FeatureServer/0/query"
-PLANNED_URL = f"{ARCGIS}/2025_Asphalt_Locations_and_Prospective_Paving_Locations/FeatureServer/1/query"
+COMPLETED_URL = f"{ARCGIS}/Statewide_Paving_Status_Map_(Public_View)/FeatureServer/0"
+PLANNED_URL = f"{ARCGIS}/2025_Asphalt_Locations_and_Prospective_Paving_Locations/FeatureServer/1"
+# County selector differs per service (logged to ERRORS.md): the completed layer uses an uppercase
+# COUNTY_NAME with a bare value; the planned PMSS layer uses County_Name with a " (CO)" suffix.
+# The status map mixes PROJECT_STATUS (Completed / Scheduled / In Progress / Rescheduled) — only
+# 'Completed' is a real past treatment, so we filter to it (never fabricate a treatment year from a
+# scheduled/in-progress row).
+COMPLETED_WHERE = "COUNTY_NAME='LOUDOUN' AND PROJECT_STATUS='Completed'"
+PLANNED_WHERE = "County_Name='Loudoun (CO)'"
 # Only these are ever requested; contact fields are never fetched (asserted below).
 COMPLETED_FIELDS = ["SCHEDULE", "SYSTEM", "SCHEDULE_START_YEAR", "DASHBOARD_YEAR", "COUNTY_NAME",
                     "ROUTE_COMMON_NAME", "STREETNAMES", "LANE_DIR", "FROM_DESCRIPTION",
-                    "TO_DESCRIPTION", "LANE_MILES", "PROJECT_STATUS", "TREATMENT_TYPE", "EditDate"]
+                    "TO_DESCRIPTION", "LANE_MILES", "TREATMENT_TYPE", "EditDate"]
 PLANNED_FIELDS = ["Schedule", "System", "Schedule_Start_Year", "Dashboard_Year", "County_Name",
                   "Route_Common_Name", "streetNames", "PMS_Treatment_Type", "Project_Status_Desc"]
 CONTACT_FIELDS = {"PROJECT_MANAGER", "TELEPHONE", "EMAIL", "Creator", "Editor",
@@ -45,7 +53,6 @@ CONTACT_FIELDS = {"PROJECT_MANAGER", "TELEPHONE", "EMAIL", "Creator", "Editor",
 WORK_CRS = "EPSG:32618"
 BUFFER_M = 25.0
 OVERLAP_MIN_M = 100.0     # a same-road match must overlap this far; a cross-street only touches ~50 m
-COMPLETED_STATUSES = {"completed", "complete", "rescheduled"}
 COUNTY_STOP = {"LOUDOUN", "COUNTY"}
 NAME_STOP = {"RD", "ROAD", "ST", "DR", "AVE", "LN", "CT", "HWY", "BLVD", "PKWY", "WAY", "N", "S",
              "E", "W", "NE", "NW", "SE", "SW", "ROUTE", "VA", "US", "STATE", "RTE", "SC", "PM"} | COUNTY_STOP
@@ -57,15 +64,36 @@ def assert_no_contact(df: pd.DataFrame, where: str) -> None:
         raise AssertionError(f"CONTACT FIELDS present in {where}: {leaked} — must never be stored")
 
 
-def _fetch(url: str, fields: list[str], county: str) -> gpd.GeoDataFrame:
-    field = "COUNTY_NAME" if "COUNTY_NAME" in fields else "County_Name"
-    params = {"where": f"{field} LIKE '%{county}%'", "outFields": ",".join(fields),
-              "returnGeometry": "true", "outSR": "4326", "f": "geojson", "resultRecordCount": 2000}
-    with httpx.Client(timeout=60.0) as client:
-        resp = client.get(url, params=params)
-        resp.raise_for_status()
-        gdf = gpd.GeoDataFrame.from_features(resp.json().get("features", []), crs="EPSG:4326")
-    assert_no_contact(gdf, url)
+_GIS = None
+
+
+def _anon_gis() -> GIS:
+    """Anonymous connection — these are public FeatureServers (no token). We never touch Esri
+    geocoding, routing, or enrichment; our provenance thesis is federal, cited, open-source."""
+    global _GIS
+    if _GIS is None:
+        _GIS = GIS()
+    return _GIS
+
+
+def _fetch(layer_url: str, fields: list[str], where: str) -> gpd.GeoDataFrame:
+    """Query a public VDOT FeatureLayer anonymously via the ArcGIS Python API (documented ops only).
+    Whitelisted out_fields (never contact fields); the library handles paging; the returned row
+    count is asserted against return_count_only. SEDF geometry -> shapely via arcgis .as_shapely."""
+    fl = FeatureLayer(layer_url, gis=_anon_gis())
+    p = fl.properties
+    print(f"  layer '{p.name}': geometry={p.geometryType} maxRecordCount={p.maxRecordCount} "
+          f"Query={'Query' in p.capabilities} fields={len(p.fields)}")
+    expected = fl.query(where=where, return_count_only=True)
+    sdf = fl.query(where=where, out_fields=",".join(fields), out_sr=4326,
+                   return_geometry=True, as_df=True)
+    assert len(sdf) == expected, f"{layer_url}: fetched {len(sdf)} rows != count {expected}"
+    if sdf.empty:
+        return gpd.GeoDataFrame()
+    shape_col = sdf.spatial.name
+    sdf = sdf.assign(geometry=sdf[shape_col].apply(lambda g: g.as_shapely if g is not None else None))
+    gdf = gpd.GeoDataFrame(sdf.drop(columns=[shape_col]), geometry="geometry", crs="EPSG:4326")
+    assert_no_contact(gdf, layer_url)
     return gdf
 
 
@@ -117,8 +145,8 @@ def join_to_segments(paving: gpd.GeoDataFrame, segs: gpd.GeoDataFrame, cols: dic
 
 
 def load_treatment(segs: gpd.GeoDataFrame) -> tuple[pd.DataFrame, dict]:
-    done = _fetch(COMPLETED_URL, COMPLETED_FIELDS, "Loudoun")
-    plan = _fetch(PLANNED_URL, PLANNED_FIELDS, "Loudoun")
+    done = _fetch(COMPLETED_URL, COMPLETED_FIELDS, COMPLETED_WHERE)
+    plan = _fetch(PLANNED_URL, PLANNED_FIELDS, PLANNED_WHERE)
     if not done.empty:
         done = done.assign(pav_year=done["SCHEDULE_START_YEAR"].fillna(done.get("DASHBOARD_YEAR")))
     if not plan.empty:
@@ -165,6 +193,8 @@ def _collapse(treat: pd.DataFrame) -> pd.DataFrame:
         plan = g[g["scheduled"]].sort_values("scheduled_year", ascending=False)
         d = done.iloc[0] if not done.empty else None
         p = plan.iloc[0] if not plan.empty else None
+        if d is None and p is None:
+            continue  # a matched row with no usable year (neither completed-with-year nor scheduled)
         out.append({
             "segment_id": int(sid),
             "last_treated_year": int(d["last_treated_year"]) if d is not None else None,
@@ -192,8 +222,12 @@ def plan_comparison(scores: pd.DataFrame, treat: pd.DataFrame) -> tuple[pd.DataF
 
 
 def main() -> int:
-    segs = gpd.read_parquet(SEGMENTS)
     scores = pd.read_parquet(SCORES)
+    # Join paving only to SCORED segments: RSL and the plan comparison apply to the scored corridor,
+    # not the full 15k-segment county network (matching the whole county inflates the headline and
+    # wastes work — 90% of county matches are segments we never scored).
+    segs = gpd.read_parquet(SEGMENTS)
+    segs = segs[segs["segment_id"].isin(scores["segment_id"])].reset_index(drop=True)
     treat, meta = load_treatment(segs)
     treat.to_parquet(TREATMENT_OUT)
     print(f"VDOT paving: {meta['completed_projects']} completed, {meta['planned_projects']} planned "
@@ -226,7 +260,10 @@ def main() -> int:
     for r in a.head(5).itertuples(index=False):
         drivers = ", ".join(d["component"] for d in json.loads(seg_drivers.get(r.segment_id, "[]"))[:3])
         print(f"    seg {r.segment_id} {r.route_name or 'unnamed'}: score {r.score} ({r.grade}) — {drivers}")
-    print(f"\nWrote {TREATMENT_OUT} and {PLAN_OUT}")
+    real = int(treat["last_treated_year"].notna().sum()) if not treat.empty else 0
+    print(f"\nHEADLINE: {real}/{len(scores)} county segments now carry a real VDOT treatment year "
+          f"(basis vdot_paving); the remaining {len(scores) - real} stay on the functional-class prior.")
+    print(f"Wrote {TREATMENT_OUT} and {PLAN_OUT}")
     return 0
 
 

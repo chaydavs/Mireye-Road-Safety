@@ -7,7 +7,7 @@ cd "$(dirname "$0")"
 VENV=.venv
 if [ ! -x "$VENV/bin/streamlit" ]; then
   echo "No usable .venv. Create it once with:"
-  echo "  uv venv --python 3.11 .venv && uv pip install geopandas shapely pyproj pandas pyarrow httpx folium streamlit streamlit-folium anthropic matplotlib"
+  echo "  uv venv --python 3.11 .venv && uv pip install geopandas shapely pyproj pandas pyarrow httpx folium streamlit streamlit-folium anthropic matplotlib arcgis"
   exit 1
 fi
 

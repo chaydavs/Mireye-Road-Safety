@@ -1,0 +1,27 @@
+{
+  "segments": 2644,
+  "mireye_contribution": {
+    "median": 0.778,
+    "min": 0.572,
+    "max": 1.0
+  },
+  "mireye_by_fieldcount_median": 0.941,
+  "non_mireye_median": {
+    "vdot_traffic": 0.206,
+    "local_records": 0.0
+  },
+  "top_mireye_fields": [
+    {
+      "field": "Soil erodibility (K-factor)",
+      "in_top_drivers": 2467
+    },
+    {
+      "field": "Depth to bedrock",
+      "in_top_drivers": 2331
+    },
+    {
+      "field": "Soil available water capacity",
+      "in_top_drivers": 1770
+    }
+  ]
+}

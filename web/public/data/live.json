@@ -1,0 +1,106 @@
+{
+  "available": true,
+  "generated_at": "2026-07-17T00:16:49+00:00",
+  "calm": false,
+  "active_alerts": 0,
+  "alert_names": [],
+  "elevated_gages": 2,
+  "gage_ids": [
+    "USGS-01644280",
+    "USGS-01656903"
+  ],
+  "wet_week": false,
+  "watched_segments": 8,
+  "watched": [
+    116,
+    1717,
+    1813,
+    1818,
+    1817,
+    1867,
+    2684,
+    2986
+  ],
+  "triggers": {
+    "116": [
+      {
+        "type": "gage",
+        "source": "USGS",
+        "source_url": "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=01644280&parameterCd=00060",
+        "at": "2026-07-17T00:16:43+00:00",
+        "confidence": "observed",
+        "detail": "BROAD RUN NEAR LEESBURG, VA: 43 cfs now vs 30 cfs median"
+      }
+    ],
+    "1717": [
+      {
+        "type": "gage",
+        "source": "USGS",
+        "source_url": "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=01644280&parameterCd=00060",
+        "at": "2026-07-17T00:16:43+00:00",
+        "confidence": "observed",
+        "detail": "BROAD RUN NEAR LEESBURG, VA: 43 cfs now vs 30 cfs median"
+      }
+    ],
+    "1813": [
+      {
+        "type": "gage",
+        "source": "USGS",
+        "source_url": "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=01644280&parameterCd=00060",
+        "at": "2026-07-17T00:16:43+00:00",
+        "confidence": "observed",
+        "detail": "BROAD RUN NEAR LEESBURG, VA: 43 cfs now vs 30 cfs median"
+      }
+    ],
+    "1818": [
+      {
+        "type": "gage",
+        "source": "USGS",
+        "source_url": "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=01644280&parameterCd=00060",
+        "at": "2026-07-17T00:16:43+00:00",
+        "confidence": "observed",
+        "detail": "BROAD RUN NEAR LEESBURG, VA: 43 cfs now vs 30 cfs median"
+      }
+    ],
+    "1817": [
+      {
+        "type": "gage",
+        "source": "USGS",
+        "source_url": "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=01644280&parameterCd=00060",
+        "at": "2026-07-17T00:16:43+00:00",
+        "confidence": "observed",
+        "detail": "BROAD RUN NEAR LEESBURG, VA: 43 cfs now vs 30 cfs median"
+      }
+    ],
+    "1867": [
+      {
+        "type": "gage",
+        "source": "USGS",
+        "source_url": "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=01644280&parameterCd=00060",
+        "at": "2026-07-17T00:16:43+00:00",
+        "confidence": "observed",
+        "detail": "BROAD RUN NEAR LEESBURG, VA: 43 cfs now vs 30 cfs median"
+      }
+    ],
+    "2684": [
+      {
+        "type": "gage",
+        "source": "USGS",
+        "source_url": "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=01644280&parameterCd=00060",
+        "at": "2026-07-17T00:16:43+00:00",
+        "confidence": "observed",
+        "detail": "BROAD RUN NEAR LEESBURG, VA: 43 cfs now vs 30 cfs median"
+      }
+    ],
+    "2986": [
+      {
+        "type": "gage",
+        "source": "USGS",
+        "source_url": "https://waterservices.usgs.gov/nwis/iv/?format=json&sites=01644280&parameterCd=00060",
+        "at": "2026-07-17T00:16:43+00:00",
+        "confidence": "observed",
+        "detail": "BROAD RUN NEAR LEESBURG, VA: 43 cfs now vs 30 cfs median"
+      }
+    ]
+  }
+}

@@ -54,7 +54,7 @@ Requires Python 3.11 and `mdbtools` (`brew install mdbtools`, for the LTPP Acces
 Put a Mireye token in `.env` as `MIREYE_TOKEN=...` (and `ANTHROPIC_API_KEY=...` for the copilot).
 
 ```bash
-uv venv --python 3.11 .venv && uv pip install -r <(echo "geopandas shapely pyproj pandas pyarrow httpx folium streamlit streamlit-folium anthropic matplotlib")
+uv venv --python 3.11 .venv && uv pip install -r <(echo "geopandas shapely pyproj pandas pyarrow httpx folium streamlit streamlit-folium anthropic matplotlib arcgis")
 .venv/bin/python src/network.py      # build the road network + AADT join  -> data/segments.parquet, points.parquet
 .venv/bin/python src/fetch.py        # cache-backed Mireye fetch (resumable) -> provenance store + audit.json
 .venv/bin/python src/score.py        # scoring engine + Folium map          -> data/scores.parquet, output/map.html

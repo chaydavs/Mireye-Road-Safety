@@ -181,12 +181,19 @@ def score_segment(field_values: dict, field_conf: dict, aadt, traffic_source, ho
     score = round(100.0 * sum(weights[k] * avail[k] for k in avail) / wsum, 1) if wsum else None
 
     drivers = sorted(contributions, key=lambda c: -c[2])[:5]
+    # Data-source split for the why-card: only traffic AADT is fetched outside Mireye (from VDOT).
+    # Every other input — soil, water, bedrock, flood, landslide, climate, the census housing proxy —
+    # is served through Mireye's /v1/fetch, so mireye_share is that share of the (pre-normalized) score.
+    total_c = sum(c for _, _, c in contributions) or 1.0
+    mireye = [(f, c) for f, _, c in contributions if f != "traffic_aadt"]
     return {
         "score": score,
         "grade": _grade(field_conf, factors, t_tag),
         "factors": factors,
         "traffic_source": t_tag,
         "drivers": [{"component": f, "value": v, "contribution": round(c, 3)} for f, v, c in drivers],
+        "mireye_share": round(sum(c for _, c in mireye) / total_c, 3),
+        "mireye_field_count": len(mireye),
     }
 
 
@@ -249,6 +256,8 @@ def score_all() -> gpd.GeoDataFrame:
             "score": result["score"], "grade": result["grade"],
             "traffic_source": result["traffic_source"],
             "drivers": json.dumps(result["drivers"]), "geometry": row.geometry,
+            "mireye_share": result["mireye_share"],
+            "mireye_field_count": result["mireye_field_count"],
         })
     scored = gpd.GeoDataFrame(records, geometry="geometry", crs=segs.crs)
     return scored
