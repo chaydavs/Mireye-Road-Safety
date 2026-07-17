@@ -8,6 +8,8 @@ will deteriorate fastest and why* — with every input traceable to a federal so
 commoditized by connected-vehicle sensing) but "which roads sit on ground conditions that make them
 fail early."
 
+> **Live app: https://web-one-rosy-32.vercel.app** — see [§3 Using the tool](#3-using-the-tool).
+>
 > Status: working end-to-end prototype on the Leesburg + Ashburn corridor of Loudoun County, VA.
 > Built as a Mireye take-home over 8 disciplined sessions (see `WORKLOG.md`); every model mistake
 > caught along the way is logged in `ERRORS.md`.
@@ -48,21 +50,58 @@ road-miles — who today prioritize repaving by visual ratings and complaints. T
   confidence grade. The output is honest by construction — in Loudoun that means **no A grades**,
   because the soil is reconnaissance-scale everywhere.
 
-## 3. How to run it
+## 3. Using the tool
 
-Requires Python 3.11 and `mdbtools` (`brew install mdbtools`, for the LTPP Access databases).
-Put a Mireye token in `.env` as `MIREYE_TOKEN=...` (and `ANTHROPIC_API_KEY=...` for the copilot).
+### The live app — no install
+
+**→ https://web-one-rosy-32.vercel.app**
+
+The corridor of Loudoun County, VA, ranked and explained. Four things to do:
+
+1. **Priority map** — roads colored by *relative* deterioration risk (worst = red). **Click any road**
+   for its cited why-card: the **top-5 drivers** (each linked to its federal source), the **RSL** year
+   estimate (or an honest "no treatment-year data" when there isn't one), and the **"share of this
+   decision's inputs"** bar (how much Mireye's data vs VDOT traffic drove that road's score).
+2. **Right now (live stress)** toggle — overlays *today's* stress: active NWS flood/winter alerts and
+   USGS gauges running above their own median. The status line always states the counts, so "calm" is
+   never confused with "broken." Fragility × current stress.
+3. **Ablation study** view — toggle **Traffic-only ↔ + Mireye** to watch the priority list reorder
+   (**72% of the worst-priority roads change** when Mireye's ground data is added). The **"Roads Mireye
+   reveals"** list is clickable — each opens that road's why-card. This is the proof that Mireye
+   *reorders* priorities, not just adds fields.
+4. **County copilot** — ask about the roads in plain English (e.g. *"why is the top segment ranked
+   first?"*, *"which 3 are worst?"*). Answers are tool-grounded, cited, and refuse to fabricate a
+   single-year RSL or invent data.
+
+### Run / regenerate it locally
+
+Requires **Python 3.11** and **Node 18+**. Put a Mireye token in `.env` as `MIREYE_TOKEN=...` (and
+`ANTHROPIC_API_KEY=...` for the copilot). `mdbtools` (`brew install mdbtools`) is only needed for the
+optional LTPP validation.
 
 ```bash
+# 1. Python data pipeline
 uv venv --python 3.11 .venv && uv pip install -r <(echo "geopandas shapely pyproj pandas pyarrow httpx folium streamlit streamlit-folium anthropic matplotlib arcgis")
-.venv/bin/python src/network.py      # build the road network + AADT join  -> data/segments.parquet, points.parquet
-.venv/bin/python src/fetch.py        # cache-backed Mireye fetch (resumable) -> provenance store + audit.json
-.venv/bin/python src/score.py        # scoring engine + Folium map          -> data/scores.parquet, output/map.html
-.venv/bin/streamlit run src/app.py   # the one-page app: map + cited why-card + county copilot
+.venv/bin/python src/network.py       # road network + AADT join      -> data/segments.parquet, points.parquet
+.venv/bin/python src/fetch.py         # cache-backed Mireye fetch      -> provenance store + audit.json
+.venv/bin/python src/score.py         # scoring engine + Folium map    -> data/scores.parquet, output/map.html
+.venv/bin/python src/paving.py        # VDOT paving via ArcGIS API     -> data/segment_treatment.parquet
+.venv/bin/python src/service_life.py  # RSL year ranges                -> annotates scores.parquet
+.venv/bin/python src/live.py          # live NWS/USGS stress layer      -> data/watchlist.parquet   (optional)
+.venv/bin/python src/ablation.py      # traffic-only vs +Mireye        -> data/ablation.parquet
+.venv/bin/python src/export_web.py    # -> web/public/data/*.json for the web app
+
+# 2. The web app (Next.js + MapLibre; the copilot is one Vercel serverless route)
+cd web && npm install && npm run dev   # http://localhost:3000
+#   deploy:  vercel        (then set ANTHROPIC_API_KEY in the Vercel project)
+
+# Legacy one-page Streamlit app (still works; offline/airplane-mode capable via `./run.sh`):
+.venv/bin/streamlit run src/app.py
 ```
 
 Validation (optional): `.venv/bin/python src/validate.py` runs the LTPP test and writes
-`output/ltpp_validation.png`.
+`output/ltpp_validation.png`. Full feature + methodology reference for a presentation:
+[`docs/PRESENTATION.md`](docs/PRESENTATION.md).
 
 ## 4. What worked
 

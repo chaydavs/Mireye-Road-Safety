@@ -16,6 +16,8 @@ __pycache__/
 .gyst/
 .hintrc
 
-# Scratch (dev screenshots, playwright artifacts)
+# Scratch (dev screenshots, playwright artifacts, OS files)
 /subgrade-*.png
+/ablation-*.png
 .playwright-mcp/
+.DS_Store
