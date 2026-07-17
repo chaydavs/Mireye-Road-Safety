@@ -108,12 +108,34 @@ Validation (optional): `.venv/bin/python src/validate.py` runs the LTPP test and
 - **End-to-end, at scale, cached.** A cache-backed, resumable fetch loop pulls Mireye's ground +
   climate fields for the corridor, storing every value with full provenance (`value, source,
   source_url, fetched_at, confidence`). Re-runs never re-spend the rate limit.
-- **A ranked map a county engineer could act on** — `output/map.html`, segments colored by risk,
-  grade in the tooltip — plus **cited why-cards** where *every factual line traces to a provenance
-  row* (no provenance row, no sentence).
-- **A county copilot** wired to two tools (the scored dataset + live Mireye) that answers "why is
-  this segment ranked first?" and **refuses** "which segment will fail in March 2027?" — because the
-  data cannot answer it. (Transcripts in `WALKTHROUGH.md`.)
+- **A deployed, interactive map a county engineer could act on** — the live web app
+  ([subgrade-roads.vercel.app](https://subgrade-roads.vercel.app)): segments colored by *relative*
+  risk, with **cited why-cards** where *every driver line traces to a provenance row* (no provenance
+  row, no sentence). The top-5 drivers are ranked by their actual contribution to that segment's score.
+- **A remaining-service-life (RSL) forecast.** A transparent *rate-stretch* (`effective_life =
+  expected_life / relative_rate`) turns the fragility score into a **year range** for when a segment
+  reaches poor condition — sourced from HPMS/VDOT treatment years, **never fabricated**. When no real
+  treatment year exists, the card says *"no treatment-year data; RSL not estimated"* rather than invent
+  a past window; a single-year answer is treated as a bug.
+- **VDOT paving integration + plan-vs-risk.** The county's completed/planned paving is pulled via the
+  **ArcGIS Python API** (anonymous, documented ops only; **contact fields dropped and asserted absent**),
+  spatially joined geometry-first, and compared to the risk ranking: **265 top-decile-risk segments are
+  *not* on the paving plan** — framed as a lens for a conversation, not an error claim.
+- **A live "Right now" layer.** NWS flood/winter alerts + USGS gauges running above their *own* median
+  overlay today's stress on the static fragility map (**fragility × current stress**) — and double as a
+  working demo of the real-time tier Mireye lacks.
+- **Honest data attribution.** Every why-card shows the **share of the decision Mireye's data drove**,
+  weighted by actual contribution: **median 78% Mireye vs a median 21% VDOT traffic** — with the naive
+  **field-count figure (94%) shown alongside** so it can't mislead.
+- **An ablation study that proves Mireye is load-bearing.** Strip every Mireye-served field and score on
+  the county's own VDOT traffic alone: **72% of the worst-priority repaving list reorders** (Spearman
+  **0.16**), and **1,110 of 2,644 roads are invisible to a traffic-only model**. This directly answers
+  *"isn't Mireye's share high just because you built the score around its fields?"* by **measuring** how
+  much the county's priorities change — a decision-divergence test, never an accuracy claim. Live in the
+  app's **"Ablation study"** view (toggle *Traffic-only ↔ + Mireye* to watch the roads reorder).
+- **A county copilot** wired to the scored dataset that answers "why is this segment ranked first?"
+  (cited, rendered markdown) and **refuses** "which segment will fail in March 2027?" — because the data
+  cannot answer it. (Transcripts in `WALKTHROUGH.md`.)
 - **Empirical validation against federal ground truth (LTPP).**
 
 ![LTPP validation](output/ltpp_validation.png)
