@@ -54,6 +54,8 @@ function summary(p: SegmentProps) {
     grade: p.grade,
     top_drivers: p.drivers.map((d) => ({ factor: d.label, value: d.value, contribution: d.contribution, source: d.source })),
     rsl: p.rsl, // estimated, basis, low, high, last_treated, text
+    mireye_share: p.mireye_share, // fraction of the score from Mireye-served data (rest is VDOT traffic)
+    mireye_field_count: p.mireye_field_count,
   };
 }
 

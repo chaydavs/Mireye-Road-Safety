@@ -69,9 +69,23 @@ The corridor of Loudoun County, VA, ranked and explained. Four things to do:
    (**72% of the worst-priority roads change** when Mireye's ground data is added). The **"Roads Mireye
    reveals"** list is clickable — each opens that road's why-card. This is the proof that Mireye
    *reorders* priorities, not just adds fields.
-4. **County copilot** — ask about the roads in plain English (e.g. *"why is the top segment ranked
-   first?"*, *"which 3 are worst?"*). Answers are tool-grounded, cited, and refuse to fabricate a
-   single-year RSL or invent data.
+4. **County copilot** — ask about the roads in plain English. Every answer is grounded in the scored
+   dataset (via a `query_scores` tool), cited to its federal source, and rendered as formatted markdown.
+
+   **Try asking:**
+   - *"Why is the top segment ranked first?"* — cited driver breakdown with contributions.
+   - *"Which 3 segments are highest risk, and why?"* — ranked list with each road's drivers.
+   - *"When will the top segment reach poor condition?"* — the RSL **year range** + basis (or an honest
+     *"no treatment-year data"* for roads VDOT hasn't paved).
+   - *"What makes the #1 road worse than the #2 road?"* — a segment-to-segment comparison.
+   - *"How much of the top segment's score comes from Mireye's data vs. traffic?"* — the attribution split.
+   - *"Are there any roads on Route 7?"* — search by route/road name.
+
+   **It will refuse (by design):**
+   - *"Which segment will fail in March 2027?"* — refuses an exact date; the RSL is a screening-grade
+     range, not a prediction.
+   - *"What's the pothole count / current condition on Main St?"* — refuses; Subgrade scores deterioration
+     *risk*, not current pavement condition, and won't invent data it doesn't have.
 
 ### Run / regenerate it locally
 
