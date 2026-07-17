@@ -147,7 +147,7 @@ denominator — never contributes a fabricated 0).
   - **Honesty rules (this is the differentiator):** a range is shown **only** when a real treatment year
     exists (HPMS/VDOT); it's **floored at the current year** (a road is never shown already-failed); and
     when there's no treatment year, the card says **"no treatment-year data; RSL not estimated"** instead
-    of inventing a past window. Corridor: **106 segments get a real range (VDOT), 2,538 are honestly
+    of inventing a past window. Corridor: **377 segments get a real range (VDOT), 2,267 are honestly
     not-estimated.** A single-year answer is treated as a bug by definition.
 
 ---
@@ -159,10 +159,15 @@ denominator — never contributes a fabricated 0).
 - **Tells us:** what the county has already treated and what's scheduled — the real-world plan.
 - **How:** anonymous `GIS()` / `FeatureLayer.query` (documented ops only, count-asserted, no Esri
   enrichment). **Completed = `PROJECT_STATUS='Completed'` only** (scheduled/in-progress rows are *not*
-  treatments — never fabricate a year). **Contact fields (PM name, phone, email) are dropped at ingestion
-  and asserted absent in every stored table.** Join is **geometry-first** (same-road overlap ≥ 100 m, so
-  a cross-street can't match). Corridor: 494 completed + 160 planned projects; **106 scored segments carry
-  a real treatment year.**
+  treatments — never fabricate a year). **Contact fields (PM name, phone, email, NTLOGIN) are dropped at
+  ingestion and asserted absent in every stored table.** Join is **geometry-first** (same-road overlap ≥
+  100 m, so a cross-street can't match).
+- **Multi-year paving history:** VDOT publishes a paving-status map *per year*; we combine the base
+  2016–17 layer with the annual layers (2023/24/26 — a different schema: `DASHBOARD_YEAR`, `Loudoun (CO)`
+  suffix, `PMS_TREATMENT_TYPE`) and take each road's **most recent** completed paving year. Corridor:
+  **1,009 completed records** (spanning 2016–2026) + 160 planned; **377 scored segments carry a real
+  treatment year** (up from 106 on the single snapshot) with **current dates** (e.g. last treated 2026 →
+  reach poor condition 2034–2039).
 
 ### 5.2 Plan-vs-risk comparison (3 buckets)
 - **What it is:** compares Subgrade's risk ranking against VDOT's paving plan.
@@ -308,7 +313,7 @@ denominator — never contributes a fabricated 0).
 | Confidence grades | 0 A · 938 B · 1,706 C |
 | **Mireye's share of each decision** | **median 78% by contribution** (vs 94% by naive field-count) |
 | VDOT traffic (the gap) | median 21% |
-| RSL estimated vs not | 106 (real treatment year) · 2,538 (honestly not estimated) |
+| RSL estimated vs not | 377 (real treatment year, 2016–2026 VDOT paving) · 2,267 (honestly not estimated) |
 | Plan vs risk | 265 high-risk unscheduled · 4 agree · 8 scheduled-lower-risk |
 | LTPP validation | top-quartile ~17% faster, p ≈ 0.26, n = 51 (honest, not significant) |
 

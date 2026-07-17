@@ -120,7 +120,10 @@ Validation (optional): `.venv/bin/python src/validate.py` runs the LTPP test and
 - **VDOT paving integration + plan-vs-risk.** The county's completed/planned paving is pulled via the
   **ArcGIS Python API** (anonymous, documented ops only; **contact fields dropped and asserted absent**),
   spatially joined geometry-first, and compared to the risk ranking: **265 top-decile-risk segments are
-  *not* on the paving plan** — framed as a lens for a conversation, not an error claim.
+  *not* on the paving plan** — framed as a lens for a conversation, not an error claim. VDOT publishes a
+  paving-status map *per year*, so we combine the annual layers (**2016–2026**) and take each road's
+  **most recent** paving year — giving **377 scored segments a real "last laid" date** (up from 106 on a
+  single snapshot) with current dates, which is what powers the RSL repair-window prediction above.
 - **A live "Right now" layer.** NWS flood/winter alerts + USGS gauges running above their *own* median
   overlay today's stress on the static fragility map (**fragility × current stress**) — and double as a
   working demo of the real-time tier Mireye lacks.

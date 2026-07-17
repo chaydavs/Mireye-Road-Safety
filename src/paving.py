@@ -48,8 +48,24 @@ COMPLETED_FIELDS = ["SCHEDULE", "SYSTEM", "SCHEDULE_START_YEAR", "DASHBOARD_YEAR
                     "TO_DESCRIPTION", "LANE_MILES", "TREATMENT_TYPE", "EditDate"]
 PLANNED_FIELDS = ["Schedule", "System", "Schedule_Start_Year", "Dashboard_Year", "County_Name",
                   "Route_Common_Name", "streetNames", "PMS_Treatment_Type", "Project_Status_Desc"]
-CONTACT_FIELDS = {"PROJECT_MANAGER", "TELEPHONE", "EMAIL", "Creator", "Editor",
-                  "project_manager", "telephone", "email"}
+# VDOT publishes a paving-status map PER YEAR; we combine the base 2016-17 layer with the annual
+# layers that carry Loudoun data (2023/24/26) and take each road's MOST RECENT completed paving year
+# (a road repaved in 2024 is fresher than one from 2017). Annual layers use a different schema:
+# DASHBOARD_YEAR (not SCHEDULE_START_YEAR), COUNTY_NAME with a " (CO)" suffix, PMS_TREATMENT_TYPE.
+ANNUAL_FIELDS = ["SCHEDULE", "SYSTEM", "DASHBOARD_YEAR", "COUNTY_NAME", "ROUTE_COMMON_NAME",
+                 "STREETNAMES", "LANE_DIR", "FROM_DESCRIPTION", "TO_DESCRIPTION", "LANE_MILES",
+                 "PMS_TREATMENT_TYPE"]
+_ANNUAL_WHERE = "COUNTY_NAME='Loudoun (CO)' AND PROJECT_STATUS='Completed'"
+_ANNUAL_URL = ARCGIS + "/Statewide_Paving_Status_Map_(Public_View)_{yr}/FeatureServer/0"
+# (label, layer_url, where, out_fields, year_field, treatment_field)
+COMPLETED_SOURCES = [
+    ("2016-17", COMPLETED_URL, COMPLETED_WHERE, COMPLETED_FIELDS, "SCHEDULE_START_YEAR", "TREATMENT_TYPE"),
+    ("2023", _ANNUAL_URL.format(yr=2023), _ANNUAL_WHERE, ANNUAL_FIELDS, "DASHBOARD_YEAR", "PMS_TREATMENT_TYPE"),
+    ("2024", _ANNUAL_URL.format(yr=2024), _ANNUAL_WHERE, ANNUAL_FIELDS, "DASHBOARD_YEAR", "PMS_TREATMENT_TYPE"),
+    ("2026", _ANNUAL_URL.format(yr=2026), _ANNUAL_WHERE, ANNUAL_FIELDS, "DASHBOARD_YEAR", "PMS_TREATMENT_TYPE"),
+]
+CONTACT_FIELDS = {"PROJECT_MANAGER", "TELEPHONE", "EMAIL", "Creator", "Editor", "NTLOGIN",
+                  "project_manager", "telephone", "email", "ntlogin"}
 WORK_CRS = "EPSG:32618"
 BUFFER_M = 25.0
 OVERLAP_MIN_M = 100.0     # a same-road match must overlap this far; a cross-street only touches ~50 m
@@ -97,6 +113,20 @@ def _fetch(layer_url: str, fields: list[str], where: str) -> gpd.GeoDataFrame:
     return gdf
 
 
+def _fetch_completed(url: str, where: str, fields: list[str], year_field: str,
+                     treat_field: str) -> gpd.GeoDataFrame:
+    """Fetch one completed-paving layer and normalize its schema to unified columns (pav_year,
+    treat_type, ROUTE_COMMON_NAME, STREETNAMES, SCHEDULE, geometry) so all years concat cleanly."""
+    g = _fetch(url, fields, where)
+    if g.empty:
+        return g
+    g["pav_year"] = g["SCHEDULE_START_YEAR"].fillna(g.get("DASHBOARD_YEAR")) \
+        if year_field == "SCHEDULE_START_YEAR" else g[year_field]
+    g["treat_type"] = g[treat_field]
+    keep = ["pav_year", "treat_type", "ROUTE_COMMON_NAME", "STREETNAMES", "SCHEDULE", "geometry"]
+    return gpd.GeoDataFrame(g[[c for c in keep if c in g.columns]], geometry="geometry", crs=g.crs)
+
+
 def _tokens(name, stop=NAME_STOP) -> set[str]:
     if not isinstance(name, str) or not name:
         return set()
@@ -140,26 +170,37 @@ def join_to_segments(paving: gpd.GeoDataFrame, segs: gpd.GeoDataFrame, cols: dic
             "join_confidence": "high" if agree else "medium",
         })
     df = pd.DataFrame(rows, columns=empty.columns)
-    df = df.sort_values(["join_confidence", "overlap_m"], ascending=[True, False])
-    return df.drop_duplicates("segment_id", keep="first")
+    # Keep the MOST RECENT paving year per segment (a road matched across several annual layers takes
+    # its latest year), tie-broken by name-agreement confidence then overlap length.
+    df["_yr"] = pd.to_numeric(df["year"], errors="coerce").fillna(0)
+    df = df.sort_values(["_yr", "join_confidence", "overlap_m"], ascending=[False, True, False])
+    return df.drop_duplicates("segment_id", keep="first").drop(columns="_yr")
 
 
 def load_treatment(segs: gpd.GeoDataFrame) -> tuple[pd.DataFrame, dict]:
-    done = _fetch(COMPLETED_URL, COMPLETED_FIELDS, COMPLETED_WHERE)
+    # Combine the base 2016-17 layer with VDOT's annual paving maps -> the richest last-paved history.
+    parts, by_year = [], {}
+    for label, url, where, fields, yfield, tfield in COMPLETED_SOURCES:
+        g = _fetch_completed(url, where, fields, yfield, tfield)
+        by_year[label] = int(len(g))
+        if not g.empty:
+            parts.append(g)
+    done = gpd.GeoDataFrame(pd.concat(parts, ignore_index=True), geometry="geometry",
+                            crs="EPSG:4326") if parts else gpd.GeoDataFrame()
     plan = _fetch(PLANNED_URL, PLANNED_FIELDS, PLANNED_WHERE)
-    if not done.empty:
-        done = done.assign(pav_year=done["SCHEDULE_START_YEAR"].fillna(done.get("DASHBOARD_YEAR")))
     if not plan.empty:
         plan = plan.assign(pav_year=plan["Schedule_Start_Year"].fillna(plan.get("Dashboard_Year")))
 
     m_done = join_to_segments(done, segs, {
         "common": "ROUTE_COMMON_NAME", "streets": "STREETNAMES", "year": "pav_year",
-        "treatment": "TREATMENT_TYPE", "schedule": "SCHEDULE", "completed": True})
+        "treatment": "treat_type", "schedule": "SCHEDULE", "completed": True})
     m_plan = join_to_segments(plan, segs, {
         "common": "Route_Common_Name", "streets": "streetNames", "year": "pav_year",
         "treatment": "PMS_Treatment_Type", "schedule": "Schedule", "completed": False})
     meta = {"completed_projects": int(len(done)), "planned_projects": int(len(plan)),
-            "segments_completed_matched": int(len(m_done)), "segments_planned_matched": int(len(m_plan))}
+            "completed_by_year": by_year,
+            "segments_completed_matched": int(m_done["segment_id"].nunique()) if not m_done.empty else 0,
+            "segments_planned_matched": int(m_plan["segment_id"].nunique()) if not m_plan.empty else 0}
 
     rows = []
     for m in (m_done, m_plan):
@@ -230,9 +271,9 @@ def main() -> int:
     segs = segs[segs["segment_id"].isin(scores["segment_id"])].reset_index(drop=True)
     treat, meta = load_treatment(segs)
     treat.to_parquet(TREATMENT_OUT)
-    print(f"VDOT paving: {meta['completed_projects']} completed, {meta['planned_projects']} planned "
-          f"in Loudoun; matched {meta['segments_completed_matched']} completed / "
-          f"{meta['segments_planned_matched']} planned to segments (geometry-first).")
+    print(f"VDOT paving: {meta['completed_projects']} completed (by layer year: {meta['completed_by_year']}), "
+          f"{meta['planned_projects']} planned in Loudoun; matched {meta['segments_completed_matched']} "
+          f"completed / {meta['segments_planned_matched']} planned to segments (most-recent year per segment).")
 
     print("\n5 matched pairs (our route_name vs VDOT route) — same road, not a cross-street:")
     show = treat[treat["last_treated_year"].notna() | treat["scheduled"]].head(5)
