@@ -26,6 +26,15 @@ def test_build_map_renders_segment_layers():
     assert "seg " in m._repr_html_()  # per-segment tooltip present
 
 
+def test_build_map_is_a_single_layer_not_per_segment():
+    """Perf guard: the whole network renders as ONE GeoJson layer, not one layer per segment.
+    Per-segment layers shipped a ~5 MB, 2,600-layer map on every rerun and lagged the browser."""
+    g = app.load_scored()  # full network, not .head()
+    m = app.build_map(g)
+    # base tile layer + one segments layer — a handful, never thousands
+    assert len(m._children) <= 4, f"expected a single segments layer, got {len(m._children)}"
+
+
 def test_why_card_lines_are_all_cited():
     g = app.load_scored()
     r = g.sort_values("score", ascending=False).iloc[0]

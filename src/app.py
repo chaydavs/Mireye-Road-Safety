@@ -39,23 +39,28 @@ def load_scored() -> gpd.GeoDataFrame:
 
 
 def build_map(scored: gpd.GeoDataFrame, watched_ids: set | None = None) -> folium.Map:
-    """Static mode colors by risk score. Live ("Right now") mode colors watch-listed segments red
-    and greys the rest, so current stress pops against the static fragility map."""
-    minx, miny, maxx, maxy = scored.total_bounds
+    """Render the whole network as ONE GeoJson layer with a data-driven style. One folium layer
+    per segment ships a ~5 MB, 2,600-layer map on every rerun and lags the browser; a single layer
+    is ~10x faster to serialize. Static mode colors by risk score; live ("Right now") mode colors
+    watch-listed segments red and greys the rest, so current stress pops against fragility."""
+    g = scored[["segment_id", "route_name", "score", "grade", "geometry"]].copy()
+    if watched_ids is not None:
+        on = g["segment_id"].astype(int).isin(watched_ids)
+        g["color"], g["weight"] = on.map({True: "#d7191c", False: "#cccccc"}), on.map({True: 5, False: 2})
+    else:
+        g["color"], g["weight"] = g["score"].map(score._color), 4
+    # The tooltip string is what st_folium returns as last_object_clicked_tooltip (parsed for seg id).
+    g["label"] = [f"seg {r.segment_id} — {r.route_name or 'unnamed'}: score {r.score} (grade {r.grade})"
+                  for r in g.itertuples()]
+
+    minx, miny, maxx, maxy = g.total_bounds
     m = folium.Map(location=[(miny + maxy) / 2, (minx + maxx) / 2], zoom_start=12)
-    for _, r in scored.iterrows():
-        if watched_ids is not None:
-            on = int(r["segment_id"]) in watched_ids
-            colour, weight = ("#d7191c", 5) if on else ("#cccccc", 2)
-        else:
-            colour, weight = score._color(r["score"]), 4
-        folium.GeoJson(
-            r.geometry.__geo_interface__,
-            style_function=lambda _f, c=colour, w=weight: {"color": c, "weight": w},
-            tooltip=f"seg {r['segment_id']} — {r['route_name'] or 'unnamed'}: "
-                    f"score {r['score']} (grade {r['grade']})",
-            name=str(r["segment_id"]),
-        ).add_to(m)
+    folium.GeoJson(
+        g[["color", "weight", "label", "geometry"]],
+        style_function=lambda f: {"color": f["properties"]["color"], "weight": f["properties"]["weight"]},
+        tooltip=folium.GeoJsonTooltip(fields=["label"], labels=False),
+        name="segments",
+    ).add_to(m)
     return m
 
 
