@@ -277,6 +277,82 @@ header .sub {
   border: 1px solid var(--edge);
 }
 
+/* rendered markdown in copilot answers */
+.md {
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.md > *:first-child {
+  margin-top: 0;
+}
+
+.md > *:last-child {
+  margin-bottom: 0;
+}
+
+.md p {
+  margin: 6px 0;
+}
+
+.md strong {
+  color: var(--ink);
+  font-weight: 650;
+}
+
+.md ul,
+.md ol {
+  margin: 6px 0;
+  padding-left: 18px;
+}
+
+.md li {
+  margin: 3px 0;
+}
+
+.md h1,
+.md h2,
+.md h3,
+.md h4 {
+  font-size: 13px;
+  margin: 10px 0 4px;
+  color: var(--ink);
+}
+
+.md a {
+  color: var(--accent);
+}
+
+.md code {
+  background: #0b1620;
+  border: 1px solid var(--edge);
+  border-radius: 4px;
+  padding: 0 4px;
+  font-size: 12px;
+  font-family: ui-monospace, monospace;
+}
+
+.md table {
+  border-collapse: collapse;
+  width: 100%;
+  margin: 8px 0;
+  font-size: 12px;
+  display: block;
+  overflow-x: auto;
+}
+
+.md th,
+.md td {
+  border: 1px solid var(--edge);
+  padding: 4px 8px;
+  text-align: left;
+}
+
+.md th {
+  background: #0b1620;
+  color: var(--muted);
+}
+
 .chat .tool {
   font-size: 11px;
   color: var(--muted);

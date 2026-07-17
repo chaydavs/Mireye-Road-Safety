@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
+import ReactMarkdown from "react-markdown";
+import remarkGfm from "remark-gfm";
 import type { SegmentProps, Live, Trigger, Summary } from "./types";
 
 const MapView = dynamic(() => import("./MapView"), { ssr: false });
@@ -283,7 +285,20 @@ function Copilot() {
               tool: {t.tool}({JSON.stringify(t.input)})
             </div>
           ))}
-          {m.text}
+          {m.role === "bot" ? (
+            <div className="md">
+              <ReactMarkdown
+                remarkPlugins={[remarkGfm]}
+                components={{
+                  a: ({ ...props }) => <a {...props} target="_blank" rel="noreferrer" />,
+                }}
+              >
+                {m.text}
+              </ReactMarkdown>
+            </div>
+          ) : (
+            m.text
+          )}
         </div>
       ))}
       {busy && <div className="msg bot">Thinking (querying the scored data)…</div>}
