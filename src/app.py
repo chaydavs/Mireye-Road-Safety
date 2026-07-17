@@ -181,10 +181,12 @@ def main() -> None:
         st.subheader(f"Why-card — segment {seg_id}: {r['route_name'] or 'unnamed road'}")
         st.metric("Risk score", r["score"], help=f"confidence grade {r['grade']}")
         st.write(f"**Grade {r['grade']}** · traffic source: {r['traffic_source']}")
-        if "rsl_year_low" in scored.columns and pd.notna(r.get("rsl_year_low")):
+        if "rsl_basis" in scored.columns:
             import service_life
+            estimated = pd.notna(r.get("rsl_year_low"))
             st.markdown("**⏳ " + service_life.render_rsl({
-                "rsl_year_low": int(r["rsl_year_low"]), "rsl_year_high": int(r["rsl_year_high"]),
+                "rsl_year_low": int(r["rsl_year_low"]) if estimated else None,
+                "rsl_year_high": int(r["rsl_year_high"]) if estimated else None,
                 "rsl_basis": r["rsl_basis"], "last_treated_year": r.get("rsl_last_treated"),
                 "grade": r["rsl_grade"]}) + "**")
         if live_mode and watchlist is not None:
@@ -197,7 +199,7 @@ def main() -> None:
             else:
                 st.caption("No active stress on this segment right now.")
         st.markdown("**Drivers (each cited to a federal source):**")
-        for line in provenance_lines(seg_id, json.loads(r["top3"])):
+        for line in provenance_lines(seg_id, json.loads(r["drivers"])):
             st.markdown(line)
 
     st.divider()

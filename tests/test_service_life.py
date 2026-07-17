@@ -21,32 +21,47 @@ def test_relative_rate_median_is_one_and_clamped():
     assert sl.MIN_RATE <= sl.relative_rate(1, 50) <= sl.MAX_RATE  # clamped, never absurd
 
 
-def test_rsl_is_always_a_range_never_a_single_year():
+def test_estimated_rsl_is_always_a_range_never_a_single_year():
     r = sl.rsl_for_segment(score=50, median=50, current_year=2026, grade="B",
-                           mtfcc="S1200", vdot_year=2019, treatment_type="mill and overlay")
+                           vdot_year=2019, treatment_type="mill and overlay")
+    assert r["rsl_estimated"] is True
     assert r["rsl_year_high"] > r["rsl_year_low"]          # a RANGE by construction (a point = bug)
 
 
-def test_unknown_treatment_year_takes_prior_and_caps_grade_c():
+def test_unknown_treatment_year_is_not_estimated_and_caps_grade_c():
     r = sl.rsl_for_segment(score=50, median=50, current_year=2026, grade="A",  # was A...
-                           mtfcc="S1400", hpms_year=None, vdot_year=None, treatment_type=None)
+                           hpms_year=None, vdot_year=None, treatment_type=None)
     assert r["rsl_basis"] == "prior"
-    assert r["grade"] == "C"                                # ...capped to C on the prior path
+    assert r["rsl_estimated"] is False                     # no fabricated window on the prior path
+    assert r["grade"] == "C"                                # ...capped to C
     assert r["last_treated_year"] is None                  # never fabricate a treatment year
-    assert r["rsl_year_high"] > r["rsl_year_low"]
+    assert r["rsl_year_low"] is None and r["rsl_year_high"] is None   # no range shown
+
+
+def test_estimated_rsl_never_lands_in_the_past():
+    # A very old treatment year would compute a past poor-condition year — the floor forbids it.
+    r = sl.rsl_for_segment(score=60, median=50, current_year=2026, grade="B",
+                           vdot_year=1990, treatment_type="chip seal")
+    assert r["rsl_estimated"] is True
+    assert r["rsl_year_low"] >= 2026 and r["rsl_year_high"] >= 2026   # never already-failed
+
+
+def test_prior_basis_renders_as_not_estimated():
+    line = sl.render_rsl({"rsl_basis": "prior", "rsl_year_low": None, "rsl_year_high": None,
+                          "last_treated_year": None, "grade": "C"})
+    assert "not estimated" in line and "no treatment-year data" in line
 
 
 def test_source_priority_hpms_over_vdot_over_prior():
-    common = dict(score=50, median=50, current_year=2026, grade="B", mtfcc="S1200",
-                  treatment_type="thin overlay")
+    common = dict(score=50, median=50, current_year=2026, grade="B", treatment_type="thin overlay")
     assert sl.rsl_for_segment(**common, hpms_year=None, vdot_year=None)["rsl_basis"] == "prior"
     assert sl.rsl_for_segment(**common, hpms_year=None, vdot_year=2019)["rsl_basis"] == "vdot"
     assert sl.rsl_for_segment(**common, hpms_year=2015, vdot_year=2019)["rsl_basis"] == "hpms"
 
 
 def test_faster_rate_shortens_rsl():
-    slow = sl.rsl_for_segment(score=40, median=50, current_year=2026, grade="B", mtfcc="S1200",
+    slow = sl.rsl_for_segment(score=40, median=50, current_year=2026, grade="B",
                               vdot_year=2019, treatment_type="mill and overlay")
-    fast = sl.rsl_for_segment(score=60, median=50, current_year=2026, grade="B", mtfcc="S1200",
+    fast = sl.rsl_for_segment(score=60, median=50, current_year=2026, grade="B",
                               vdot_year=2019, treatment_type="mill and overlay")
     assert fast["rsl_year_high"] <= slow["rsl_year_high"]   # more fragile -> reaches poor sooner

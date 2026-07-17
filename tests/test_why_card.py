@@ -53,7 +53,7 @@ def test_proxy_traffic_is_never_labeled_aadt():
     _put(conn, "7_0", "housing_units_density_per_km2", 500.0, "US_CENSUS", "http://census")
     seg_row = {
         "segment_id": 7, "route_name": "Some Rd", "score": 50.0, "grade": "C",
-        "top3": json.dumps([
+        "drivers": json.dumps([
             {"component": "housing_units_density_per_km2", "value": 500.0, "contribution": 0.1},
         ]),
     }
@@ -68,7 +68,7 @@ def test_real_aadt_cites_vdot():
     conn = _mem_db()
     seg_row = {
         "segment_id": 8, "route_name": "Route 7", "score": 60.0, "grade": "B",
-        "top3": json.dumps([{"component": "traffic_aadt", "value": 40000.0, "contribution": 0.2}]),
+        "drivers": json.dumps([{"component": "traffic_aadt", "value": 40000.0, "contribution": 0.2}]),
     }
     from shapely.geometry import LineString
     card = why_card.compose_card(conn, seg_row, LineString([(0, 0), (0, 0.001)]))

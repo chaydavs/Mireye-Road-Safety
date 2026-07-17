@@ -221,10 +221,10 @@ def main() -> int:
     print(f"  (c) scheduled but bottom-half risk          : {counts['c_scheduled_lower_risk']}")
     print("\n  Top 5 of bucket (a) — high risk, not on the plan (with why-drivers):")
     a = plan[plan["bucket"] == "a_high_risk_unscheduled"].sort_values("score", ascending=False)
-    top3 = dict(zip(scores["segment_id"], scores["top3"]))
+    seg_drivers = dict(zip(scores["segment_id"], scores["drivers"]))
     import json
     for r in a.head(5).itertuples(index=False):
-        drivers = ", ".join(d["component"] for d in json.loads(top3.get(r.segment_id, "[]"))[:3])
+        drivers = ", ".join(d["component"] for d in json.loads(seg_drivers.get(r.segment_id, "[]"))[:3])
         print(f"    seg {r.segment_id} {r.route_name or 'unnamed'}: score {r.score} ({r.grade}) — {drivers}")
     print(f"\nWrote {TREATMENT_OUT} and {PLAN_OUT}")
     return 0

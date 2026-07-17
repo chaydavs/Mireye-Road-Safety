@@ -55,10 +55,10 @@ def traffic_line(aadt) -> str:
 
 
 def compose_card(conn, seg_row, seg_geom) -> dict:
-    """Cited lines from provenance for the segment's top-3 drivers, plus an /ask narrative slot."""
-    top3 = json.loads(seg_row["top3"])
+    """Cited lines from provenance for the segment's top-5 drivers, plus an /ask narrative slot."""
+    drivers = json.loads(seg_row["drivers"])
     cited = []
-    for driver in top3:
+    for driver in drivers:
         field = driver["component"]
         if field == "traffic_aadt":
             cited.append(traffic_line(driver["value"]))  # real VDOT AADT, cited to VDOT

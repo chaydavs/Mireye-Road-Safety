@@ -77,7 +77,7 @@ TOOLS = [
 def _seg_summary(r) -> dict:
     out = {"segment_id": int(r["segment_id"]), "route_name": r["route_name"],
            "score": float(r["score"]), "grade": r["grade"],
-           "traffic_source": r["traffic_source"], "top_drivers": json.loads(r["top3"])}
+           "traffic_source": r["traffic_source"], "top_drivers": json.loads(r["drivers"])}
     if "rsl_year_low" in r and pd.notna(r.get("rsl_year_low")):
         out["reach_poor_condition_year_range"] = [int(r["rsl_year_low"]), int(r["rsl_year_high"])]
         out["rsl_basis"] = r["rsl_basis"]  # hpms | vdot | prior (prior = treatment year unknown)

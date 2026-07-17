@@ -38,7 +38,7 @@ def test_build_map_is_a_single_layer_not_per_segment():
 def test_why_card_lines_are_all_cited():
     g = app.load_scored()
     r = g.sort_values("score", ascending=False).iloc[0]
-    lines = app.provenance_lines(int(r["segment_id"]), json.loads(r["top3"]))
+    lines = app.provenance_lines(int(r["segment_id"]), json.loads(r["drivers"]))
     assert lines  # the top segment has drivers
     # every line carries a source (a URL, or the named VDOT source for AADT)
     assert all(("http" in ln) or ("VDOT" in ln) for ln in lines)

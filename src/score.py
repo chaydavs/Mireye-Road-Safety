@@ -151,7 +151,7 @@ def _grade(field_conf: dict, factors: dict, traffic_tag: str) -> str:
 
 
 def score_segment(field_values: dict, field_conf: dict, aadt, traffic_source, housing_density) -> dict:
-    """Compute risk (0-100), grade, factor scores, and the top-3 contributing components."""
+    """Compute risk (0-100), grade, factor scores, and the top-5 contributing components."""
     factors, contributions = {}, []
     for name, (weight, fields) in FACTORS.items():
         comps = {f: field_values.get(f) for f in fields}
@@ -180,13 +180,13 @@ def score_segment(field_values: dict, field_conf: dict, aadt, traffic_source, ho
     wsum = sum(weights[k] for k in avail)
     score = round(100.0 * sum(weights[k] * avail[k] for k in avail) / wsum, 1) if wsum else None
 
-    top3 = sorted(contributions, key=lambda c: -c[2])[:3]
+    drivers = sorted(contributions, key=lambda c: -c[2])[:5]
     return {
         "score": score,
         "grade": _grade(field_conf, factors, t_tag),
         "factors": factors,
         "traffic_source": t_tag,
-        "top3": [{"component": f, "value": v, "contribution": round(c, 3)} for f, v, c in top3],
+        "drivers": [{"component": f, "value": v, "contribution": round(c, 3)} for f, v, c in drivers],
     }
 
 
@@ -248,7 +248,7 @@ def score_all() -> gpd.GeoDataFrame:
             "segment_id": seg_id, "route_name": row.get("route_name"),
             "score": result["score"], "grade": result["grade"],
             "traffic_source": result["traffic_source"],
-            "top3": json.dumps(result["top3"]), "geometry": row.geometry,
+            "drivers": json.dumps(result["drivers"]), "geometry": row.geometry,
         })
     scored = gpd.GeoDataFrame(records, geometry="geometry", crs=segs.crs)
     return scored
@@ -272,7 +272,7 @@ def render_map(scored: gpd.GeoDataFrame) -> None:
     center = [(miny + maxy) / 2, (minx + maxx) / 2]
     m = folium.Map(location=center, zoom_start=12, tiles="CartoDB positron")
     for _, r in scored.iterrows():
-        top = json.loads(r["top3"])
+        top = json.loads(r["drivers"])
         drivers = ", ".join(f"{t['component']}={t['value']}" for t in top)
         tooltip = (f"{r['route_name'] or 'unnamed'} | score {r['score']} (grade {r['grade']}) | "
                    f"top: {drivers}")
