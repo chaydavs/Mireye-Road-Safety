@@ -27,9 +27,11 @@ type Props = {
   watched: number[];
   selectedId: number | null;
   onSelect: (id: number) => void;
+  colorProperty?: string; // which feature property to color lines by (ablation uses color_no_mireye)
+  pulse?: number; // increment to flash the segments that changed quintile (q_changed) — movement cue
 };
 
-export default function MapView({ data, liveMode, watched, selectedId, onSelect }: Props) {
+export default function MapView({ data, liveMode, watched, selectedId, onSelect, colorProperty = "color", pulse = 0 }: Props) {
   const ref = useRef<HTMLDivElement>(null);
   const map = useRef<maplibregl.Map | null>(null);
   const ready = useRef(false);
@@ -111,10 +113,24 @@ export default function MapView({ data, liveMode, watched, selectedId, onSelect 
         0.35,
       ] as maplibregl.ExpressionSpecification);
     } else {
-      m.setPaintProperty("segments-line", "line-color", staticColor);
+      m.setPaintProperty("segments-line", "line-color", ["get", colorProperty] as maplibregl.ExpressionSpecification);
       m.setPaintProperty("segments-line", "line-opacity", 0.9);
     }
-  }, [liveMode, watched]);
+  }, [liveMode, watched, colorProperty]);
+
+  // movement cue: on pulse, briefly fatten the segments whose priority quintile changed
+  useEffect(() => {
+    const m = map.current;
+    if (!m || !ready.current || !m.getLayer("segments-line") || pulse === 0) return;
+    const base: maplibregl.ExpressionSpecification = ["case", ["boolean", ["feature-state", "sel"], false], 6, 3.2];
+    m.setPaintProperty("segments-line", "line-width", [
+      "case", ["get", "q_changed"], 7, ["boolean", ["feature-state", "sel"], false], 6, 3.2,
+    ] as maplibregl.ExpressionSpecification);
+    const t = setTimeout(() => {
+      if (map.current?.getLayer("segments-line")) map.current.setPaintProperty("segments-line", "line-width", base);
+    }, 700);
+    return () => clearTimeout(t);
+  }, [pulse]);
 
   // highlight selection via feature-state
   useEffect(() => {

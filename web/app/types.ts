@@ -32,6 +32,26 @@ export type SegmentProps = {
   rsl: Rsl;
 };
 
+export type Flip = {
+  segment_id: number;
+  route_name: string;
+  rank_delta: number;
+  reason: string;
+  fields: string[];
+  no_mireye_rank: number;
+  full_rank: number;
+};
+
+export type Ablation = {
+  segments: number;
+  spearman: number;
+  top_decile_n: number;
+  churn_count: number;
+  churn_pct: number;
+  no_mireye_inputs: string[];
+  flips: Flip[];
+};
+
 export type Summary = {
   segments: number;
   mireye_contribution: { median: number; min: number; max: number };

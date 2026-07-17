@@ -1,0 +1,72 @@
+{
+  "segments": 2644,
+  "spearman": 0.163,
+  "top_decile_n": 264,
+  "churn_count": 191,
+  "churn_pct": 72.3,
+  "flips": [
+    {
+      "segment_id": 6603,
+      "route_name": "State Rte 653",
+      "rank_delta": 1244,
+      "reason": "erodible soil + landslide-prone terrain: a traffic-only model ranks it #1,261, Mireye's ground data moves it to #17 (top-priority)",
+      "fields": [
+        "soil_erodibility_k_factor",
+        "landslide_susceptibility_index"
+      ],
+      "no_mireye_rank": 1261,
+      "full_rank": 17
+    },
+    {
+      "segment_id": 8310,
+      "route_name": "Cochran Mill Rd",
+      "rank_delta": 1116,
+      "reason": "landslide-prone terrain + erodible soil: a traffic-only model ranks it #1,261, Mireye's ground data moves it to #145 (top-priority)",
+      "fields": [
+        "landslide_susceptibility_index",
+        "soil_erodibility_k_factor"
+      ],
+      "no_mireye_rank": 1261,
+      "full_rank": 145
+    },
+    {
+      "segment_id": 11566,
+      "route_name": "Guildhall Dr",
+      "rank_delta": 1044,
+      "reason": "landslide-prone terrain + erodible soil: a traffic-only model ranks it #1,122, Mireye's ground data moves it to #78 (top-priority)",
+      "fields": [
+        "landslide_susceptibility_index",
+        "soil_erodibility_k_factor"
+      ],
+      "no_mireye_rank": 1122,
+      "full_rank": 78
+    },
+    {
+      "segment_id": 13112,
+      "route_name": "Walkley Hill Pl",
+      "rank_delta": 1044,
+      "reason": "landslide-prone terrain + erodible soil: a traffic-only model ranks it #1,122, Mireye's ground data moves it to #78 (top-priority)",
+      "fields": [
+        "landslide_susceptibility_index",
+        "soil_erodibility_k_factor"
+      ],
+      "no_mireye_rank": 1122,
+      "full_rank": 78
+    },
+    {
+      "segment_id": 4743,
+      "route_name": "State Rte 652",
+      "rank_delta": 997,
+      "reason": "erodible soil + landslide-prone terrain: a traffic-only model ranks it #1,094, Mireye's ground data moves it to #97 (top-priority)",
+      "fields": [
+        "soil_erodibility_k_factor",
+        "landslide_susceptibility_index"
+      ],
+      "no_mireye_rank": 1094,
+      "full_rank": 97
+    }
+  ],
+  "no_mireye_inputs": [
+    "traffic_aadt"
+  ]
+}

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import dynamic from "next/dynamic";
 import ReactMarkdown from "react-markdown";
 import remarkGfm from "remark-gfm";
-import type { SegmentProps, Live, Trigger, Summary } from "./types";
+import type { SegmentProps, Live, Trigger, Summary, Ablation, Flip } from "./types";
 
 const MapView = dynamic(() => import("./MapView"), { ssr: false });
 
@@ -23,8 +23,12 @@ export default function Page() {
   const [data, setData] = useState<GeoJSON.FeatureCollection | null>(null);
   const [live, setLive] = useState<Live | null>(null);
   const [summary, setSummary] = useState<Summary | null>(null);
+  const [ablation, setAblation] = useState<Ablation | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [liveMode, setLiveMode] = useState(false);
+  const [mode, setMode] = useState<"risk" | "ablation">("risk");
+  const [ablView, setAblView] = useState<"traffic" | "mireye">("traffic"); // start on traffic-only for the reveal
+  const [pulse, setPulse] = useState(0);
   const [selectedId, setSelectedId] = useState<number | null>(null);
 
   useEffect(() => {
@@ -37,7 +41,13 @@ export default function Page() {
       .catch((e) => setLoadError(String(e.message || e)));
     fetch("/data/live.json").then((r) => r.json()).then(setLive).catch(() => setLive({ available: false }));
     fetch("/data/summary.json").then((r) => r.json()).then(setSummary).catch(() => setSummary(null));
+    fetch("/data/ablation.json").then((r) => r.json()).then(setAblation).catch(() => setAblation(null));
   }, []);
+
+  function setAblViewPulse(v: "traffic" | "mireye") {
+    setAblView(v);
+    setPulse((p) => p + 1); // trigger the movement cue on the map
+  }
 
   // lookup with the intact (non-stringified) properties, keyed by segment id
   const byId = useMemo(() => {
@@ -65,25 +75,60 @@ export default function Page() {
     <div className="app">
       <header>
         <h1>Subgrade</h1>
-        <span className="sub">cited road-deterioration risk · Loudoun County, VA · {byId.size || "…"} local-road segments</span>
-        <label className="toggle">
-          <input type="checkbox" checked={liveMode} onChange={(e) => setLiveMode(e.target.checked)} />
-          Right now (live stress)
-        </label>
-        <LiveStatus live={live} liveMode={liveMode} />
-        {!liveMode && (
-          <div className="legend" title="Relative ranking among local roads — not an absolute good/bad claim">
-            <span>lower risk</span>
-            <span className="ramp" aria-hidden />
-            <span>higher risk</span>
-            <span className="ramp-note">relative rank</span>
-          </div>
+        <div className="seg">
+          <button className={mode === "risk" ? "on" : ""} onClick={() => setMode("risk")}>Priority map</button>
+          <button className={mode === "ablation" ? "on" : ""} onClick={() => setMode("ablation")}>
+            Ablation study
+          </button>
+        </div>
+        {mode === "risk" ? (
+          <>
+            <span className="sub">cited road-deterioration risk · Loudoun County, VA · {byId.size || "…"} segments</span>
+            <label className="toggle">
+              <input type="checkbox" checked={liveMode} onChange={(e) => setLiveMode(e.target.checked)} />
+              Right now (live stress)
+            </label>
+            <LiveStatus live={live} liveMode={liveMode} />
+            {!liveMode && (
+              <div className="legend" title="Relative ranking among local roads — not an absolute good/bad claim">
+                <span>lower risk</span>
+                <span className="ramp" aria-hidden />
+                <span>higher risk</span>
+                <span className="ramp-note">relative rank</span>
+              </div>
+            )}
+          </>
+        ) : (
+          <>
+            <span className="sub">how the county&apos;s repaving priority list changes without Mireye</span>
+            <div className="seg small">
+              <button className={ablView === "traffic" ? "on" : ""} onClick={() => setAblViewPulse("traffic")}>
+                Traffic-only priorities
+              </button>
+              <button className={ablView === "mireye" ? "on" : ""} onClick={() => setAblViewPulse("mireye")}>
+                + Mireye ground data
+              </button>
+            </div>
+            <div className="legend">
+              <span>lower priority</span>
+              <span className="ramp" aria-hidden />
+              <span>higher priority</span>
+            </div>
+          </>
         )}
       </header>
 
       <div className="main">
         {data ? (
-          <MapView data={data} liveMode={liveMode} watched={watched} selectedId={selectedId} onSelect={setSelectedId} />
+          <MapView
+            data={data}
+            liveMode={mode === "risk" && liveMode}
+            watched={watched}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            colorProperty={mode === "ablation" && ablView === "traffic" ? "color_no_mireye" : "color"}
+            pulse={mode === "ablation" ? pulse : 0}
+          />
         ) : (
           <div id="map" style={{ display: "grid", placeItems: "center", color: loadError ? "#ff9ba0" : "#93a1b0", padding: 20, textAlign: "center" }}>
             {loadError ? `Failed to load the map data: ${loadError}. Re-run src/export_web.py.` : "loading the network…"}
@@ -91,13 +136,16 @@ export default function Page() {
         )}
 
         <aside className="panel">
+          {mode === "ablation" && ablation && (
+            <AblationPanel abl={ablation} onPick={setSelectedId} />
+          )}
           {selected ? (
-            <WhyCard seg={selected} liveMode={liveMode} triggers={selTriggers} />
+            <WhyCard seg={selected} liveMode={mode === "risk" && liveMode} triggers={selTriggers} />
           ) : (
             <p className="empty">Click a road to see its cited why-card.</p>
           )}
-          {summary && <CountywideSummary s={summary} />}
-          <Copilot />
+          {mode === "risk" && summary && <CountywideSummary s={summary} />}
+          {mode === "risk" && <Copilot />}
         </aside>
       </div>
     </div>
@@ -183,6 +231,45 @@ function CountywideSummary({ s }: { s: Summary }) {
         <strong>{s.top_mireye_fields.map((f) => f.field).join(", ")}</strong>. The only input Mireye doesn&apos;t
         carry — VDOT traffic — is a median {Math.round(s.non_mireye_median.vdot_traffic * 100)}%.
       </p>
+    </div>
+  );
+}
+
+function AblationPanel({ abl, onPick }: { abl: Ablation; onPick: (id: number) => void }) {
+  return (
+    <div className="ablation">
+      <div className="section-title">Does Mireye reorder priorities, or just add fields?</div>
+      <div className="churn">
+        <span className="big">{Math.round(abl.churn_pct)}%</span>
+        <span className="churn-label">
+          of the county&apos;s top-priority repaving list <strong>changes</strong> when Mireye&apos;s ground data is
+          added to its own VDOT traffic data ({abl.churn_count} of the worst {abl.top_decile_n}).
+        </span>
+      </div>
+      <p className="muted">
+        Rank correlation between the two priority lists (Spearman) = <strong>{abl.spearman.toFixed(2)}</strong> —
+        near-zero means Mireye almost completely reorders the list. This measures{" "}
+        <em>how much the priority list changes</em>, not accuracy.
+      </p>
+      <p className="muted small-note">
+        Toggle <strong>Traffic-only</strong> ↔ <strong>+ Mireye</strong> above to watch the roads change color.
+      </p>
+
+      <div className="section-title" style={{ marginTop: 6 }}>Roads Mireye&apos;s ground data reveals</div>
+      <p className="muted" style={{ marginTop: -2 }}>
+        Roads with real traffic data that a traffic-only model under-ranks — Mireye&apos;s soil/water/terrain moves
+        them into the top priority list. Click one to see it on the map + its cited why-card.
+      </p>
+      <ul className="flips">
+        {abl.flips.map((f: Flip) => (
+          <li key={f.segment_id} onClick={() => onPick(f.segment_id)}>
+            <div className="flip-road">
+              {f.route_name} <span className="flip-jump">#{f.no_mireye_rank.toLocaleString()} → #{f.full_rank.toLocaleString()}</span>
+            </div>
+            <div className="flip-reason">{f.fields.map((x) => x.replace(/_/g, " ")).join(" + ")}</div>
+          </li>
+        ))}
+      </ul>
     </div>
   );
 }

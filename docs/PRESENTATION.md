@@ -228,6 +228,32 @@ denominator — never contributes a fabricated 0).
 
 ---
 
+## 8b. Ablation study — is Mireye's ground data load-bearing? (the skeptic's answer)
+
+- **What it is:** the direct answer to *"isn't Mireye's 78% share high just because you built the score
+  around Mireye's fields?"* We measure how much the county's **repaving priority list changes** when
+  every Mireye-served field is stripped and roads are scored on the county's own **VDOT traffic data
+  alone**.
+- **Tells us:** Mireye doesn't just *add* fields — it **reorders** which roads get treated first.
+- **How (decision-divergence, never accuracy — there is no ground truth here):**
+  - **FULL** = the live score (Mireye W/S/C/G + VDOT traffic).
+  - **NO_MIREYE** = traffic-only, using **only real VDOT AADT** (the census housing proxy is Mireye, so
+    it's excluded — asserted in code that NO_MIREYE contains **zero** Mireye fields).
+  - Compare the two priority rankings over the identical 2,644 segments.
+- **Results (real, untuned):**
+  - **Top-decile churn: 72.3%** — 191 of the 264 worst-priority roads *change* when Mireye's ground data
+    is added. **This is the money line.**
+  - **Spearman rank correlation = 0.16** — near-zero: Mireye almost completely reorders the list.
+  - **1,110 of 2,644 roads (42%) are invisible to a traffic-only model** (no AADT at all).
+  - **"Roads Mireye reveals"** — e.g. *State Rte 653: a traffic-only model ranks it #1,261; Mireye's
+    erodible soil + landslide terrain move it to #17.* (These flips are confound-free: roads that HAVE
+    real traffic data yet still jump, so ground data — not missing data — is provably the cause.)
+- **In the app:** an "Ablation study" view with a **Traffic-only ↔ + Mireye** toggle that recolors the
+  same map so the reorder is visible motion, the 72% headline, and the clickable flip list. Labeled
+  "how the priority list changes," never "accuracy."
+
+---
+
 ## 9. County copilot (the agentic layer)
 
 - **What it is:** a chat assistant that answers questions about the scored roads.

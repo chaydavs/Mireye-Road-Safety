@@ -392,3 +392,100 @@ header .sub {
   color: var(--muted);
   font-size: 13px;
 }
+
+/* segmented control (view switcher + ablation toggle) */
+.seg {
+  display: inline-flex;
+  border: 1px solid var(--edge);
+  border-radius: 999px;
+  overflow: hidden;
+}
+
+.seg button {
+  background: transparent;
+  color: var(--muted);
+  border: 0;
+  padding: 5px 12px;
+  font-size: 12px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.seg button.on {
+  background: var(--accent);
+  color: #04121f;
+  font-weight: 650;
+}
+
+.seg.small button {
+  padding: 4px 10px;
+}
+
+/* ablation panel */
+.ablation {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding-bottom: 14px;
+  border-bottom: 1px solid var(--edge);
+}
+
+.churn {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+}
+
+.churn .big {
+  font-size: 44px;
+  font-weight: 750;
+  color: var(--accent);
+  line-height: 1;
+}
+
+.churn-label {
+  font-size: 13px;
+  color: var(--ink);
+  line-height: 1.4;
+}
+
+.small-note {
+  font-size: 12px;
+}
+
+.flips {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.flips li {
+  border: 1px solid var(--edge);
+  border-radius: 6px;
+  padding: 8px 10px;
+  cursor: pointer;
+  background: #10202e;
+}
+
+.flips li:hover {
+  border-color: var(--accent);
+}
+
+.flip-road {
+  font-weight: 600;
+  font-size: 13px;
+}
+
+.flip-jump {
+  color: var(--accent);
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.flip-reason {
+  color: var(--muted);
+  font-size: 12px;
+  margin-top: 2px;
+  text-transform: capitalize;
+}

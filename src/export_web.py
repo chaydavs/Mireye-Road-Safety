@@ -34,6 +34,8 @@ SEGMENTS = DATA / "segments.parquet"
 CACHE_DB = DATA / "cache.sqlite"
 WATCHLIST = DATA / "watchlist.parquet"
 WATCH_META = DATA / "watchlist_meta.json"
+ABLATION = DATA / "ablation.parquet"
+ABLATION_META = DATA / "ablation_meta.json"
 OUT_DIR = REPO / "web" / "public" / "data"
 
 # Relative-rank color ramp (worst -> best quintile). Diverging green<->red; legend explains it.
@@ -117,12 +119,26 @@ def build_segments() -> dict:
     gdf["rank_pct"] = gdf["score"].rank(pct=True)
 
     current_year = datetime.now(timezone.utc).year
+    # Ablation (traffic-only vs +Mireye priority ranking) — per-segment coloring + rank movement.
+    abl = pd.read_parquet(ABLATION).set_index("segment_id") if ABLATION.exists() else None
+
     conn = sqlite3.connect(CACHE_DB)
     conn.execute("PRAGMA busy_timeout=8000")
     features = []
     for r in gdf.itertuples(index=False):
         rd = r._asdict()
         color, bucket = _color(rd["rank_pct"])
+        ablation = {}
+        if abl is not None and rd["segment_id"] in abl.index:
+            a = abl.loc[rd["segment_id"]]
+            ablation = {
+                "color_no_mireye": _color(float(a["no_mireye_pct"]))[0],
+                "quintile_full": int(a["quintile_full"]),
+                "quintile_no_mireye": int(a["quintile_no_mireye"]),
+                "q_changed": int(a["quintile_full"]) != int(a["quintile_no_mireye"]),
+                "rank_delta": int(a["rank_delta"]),
+                "is_flip": bool(a["flip"]),
+            }
         name = rd["route_name"]
         name = name if isinstance(name, str) and name else "unnamed road"  # route_name is NaN when unnamed
         rsl = _rsl_props(rd)
@@ -144,6 +160,7 @@ def build_segments() -> dict:
                 "decision_weights": {k: round(v, 4) for k, v in weights.items()},
                 "drivers": cited_drivers(conn, int(rd["segment_id"]), json.loads(rd["drivers"])),
                 "rsl": rsl,
+                **ablation,
             },
         })
     conn.close()
@@ -221,6 +238,9 @@ def main() -> int:
     (OUT_DIR / "scores.json").write_text(json.dumps(props, allow_nan=False))
     summary = build_summary(props)
     (OUT_DIR / "summary.json").write_text(json.dumps(summary, indent=2, allow_nan=False))
+    # Ablation summary (churn %, Spearman, the 5 ground-revealed flips) for the ablation view.
+    if ABLATION_META.exists():
+        (OUT_DIR / "ablation.json").write_text(ABLATION_META.read_text())
     estimated = sum(1 for p in props if p["rsl"]["estimated"])
     size_mb = (OUT_DIR / "segments.geojson").stat().st_size / 1_000_000
     print(f"Wrote {len(fc['features'])} segments -> {OUT_DIR/'segments.geojson'} ({size_mb:.1f} MB)")
