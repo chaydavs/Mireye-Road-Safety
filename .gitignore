@@ -21,3 +21,8 @@ __pycache__/
 /ablation-*.png
 .playwright-mcp/
 .DS_Store
+
+# Local dev tooling + regenerated artifacts (not part of the deliverable)
+.claude/settings.json
+.claude/settings.local.json
+output/map.html
