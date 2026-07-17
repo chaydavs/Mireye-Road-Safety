@@ -407,3 +407,55 @@ Four requested features layered onto the finished build — each cited, lean, te
 
 **Verified:** ruff clean (`src`+`tests`), **79 tests pass**, offline render path proven with networking
 disabled. Non-goals honored throughout; nothing tempting added — deferrals went to `FUTURE.md`.
+
+---
+
+## Session 9 — Vercel web app, honest attribution, arcgis paving, multi-agent review
+**Date:** 2026-07-16/17 · **Commits:** `8bad264` (map perf), `34ff657` (top-5 + RSL Fix 2),
+`d1653be` (web app + attribution + arcgis paving)
+
+Driven by live user feedback on the Streamlit demo (slow, dim, unclear). Pivoted the UI to a
+Vercel-hosted app and layered on three data-honesty fixes plus a data-attribution story.
+
+**Streamlit fixes that carried into the data**
+- ⚡ Map perf: `build_map` was one Folium layer per segment (2,645 layers, ~5 MB, re-shipped each
+  rerun). Collapsed to a single data-driven GeoJson layer — repr_html 1321→128 ms, 4.9→2.0 MB.
+- **Fix 1 — why-card drivers:** rank by real contribution, keep top **5** (was 3); renamed the field
+  `top3`→`drivers`. The true drivers surface (traffic/housing load + soil/water/landslide ground).
+- **Fix 2 — RSL:** estimate a year range ONLY for hpms/vdot basis, floored at the current year;
+  prior basis (2,538/2,644) now says "no treatment-year data; RSL not estimated" — no fabricated
+  past windows. Dropped the dead functional-class-prior age constants + unused `mtfcc` param.
+
+**Vercel web app (`web/`, Next.js + MapLibre; copilot = one serverless route)**
+- Static-first: map/why-card/RSL/live-status/attribution all render client-side from pre-generated
+  JSON (`src/export_web.py` → segments.geojson/scores.json/live.json/summary.json). No Python server
+  at runtime; the copilot is `web/app/api/copilot/route.ts`. Deploy via `vercel` + `ANTHROPIC_API_KEY`.
+- Relative-percentile map coloring (the absolute ramp painted ~89% one color); simplified gradient
+  legend; **Fix 3** always-visible live status line ("N alerts, N segments, N gauges, checked HH:MM").
+- ⚠️ Deploy-blocker fixed: root `.gitignore` `data/` also swallowed `web/public/data`; anchored to
+  `/data/` so the app's JSON ships.
+
+**Honest data-attribution (`src/attribution.py`, user's headline slide)**
+- Per-segment "share of this decision's inputs" by ACTUAL CONTRIBUTION (weight × normalized value),
+  never field count: groups Mireye / VDOT traffic / Local records (RSL treatment year, only when it
+  fed the RSL) / Live stress (only in Right-now on a watched segment). Shares sum to 100%; a
+  prior-basis segment shows no Local-records slice.
+- Countywide summary: **Mireye median 78% by contribution vs 94% by naive field-count** (the gap is
+  shown so field-counting can't mislead); top Mireye fields (soil erodibility, bedrock, water
+  capacity); non-Mireye by source. `score.py` emits `mireye_share`/`mireye_field_count`.
+
+**paving.py → anonymous ArcGIS Python API** (user request): `GIS()`/`FeatureLayer.query`, documented
+params, library paging, row-count assert, no Esri enrichment. Verified endpoints/schema first
+(completed `COUNTY_NAME='LOUDOUN'`; planned `County_Name='Loudoun (CO)'` — logged to ERRORS.md).
+Join runs against scored segments only (not the 15,643-segment county). `arcgis` added to deps.
+
+**Multi-agent adversarial review (user-requested, I oversaw):** 14 agents over 5 dimensions →
+7 confirmed findings. Fixed the HIGH ones: ⚠️ paving fabricated treatment years from
+scheduled/in-progress rows (no `PROJECT_STATUS` filter; dead `COMPLETED_STATUSES`) → filter to
+`PROJECT_STATUS='Completed'` (508→494; constitution honored); latent `_collapse` null-year TypeError
+guarded; why-card now cites the scored per-segment value, not an arbitrary provenance point; MapView
+highlights a pre-load selection; map-data fetch surfaces errors. Logged to ERRORS.md.
+
+**Verified:** ruff clean, **86 tests pass** (+4 attribution), web builds, copilot round-trips live,
+attribution shares sum to 100% with the prior/estimated distinction, all three fixes confirmed in the
+browser. HEADLINE: 106/2644 scored segments carry a real VDOT treatment year.
