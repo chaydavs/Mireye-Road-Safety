@@ -73,3 +73,15 @@ def test_app_live_mode_renders_calm_or_stress_banner():
     at.toggle[0].set_value(True).run(timeout=60)
     assert not at.exception, at.exception
     assert len(at.success) + len(at.error) + len(at.info) >= 1  # a live-state banner rendered
+
+
+def test_app_demo_mode_renders_offline(monkeypatch):
+    """Demo mode renders from local data only (no network in the render path) — airplane-mode safe."""
+    monkeypatch.setenv("SUBGRADE_DEMO", "1")
+    from streamlit.testing.v1 import AppTest
+    at = AppTest.from_file(str(Path(__file__).resolve().parent.parent / "src" / "app.py"))
+    at.run(timeout=60)
+    assert not at.exception, at.exception
+    assert any("DEMO MODE" in c.value for c in at.caption)  # demo banner shown
+    at.toggle[0].set_value(True).run(timeout=60)             # live layer from snapshot, offline
+    assert not at.exception, at.exception

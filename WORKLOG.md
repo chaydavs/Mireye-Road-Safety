@@ -352,3 +352,58 @@ calibration, scale, MCP copilot).
 clean. `ERRORS.md`: **18 caught mistakes**.
 
 **BUILD COMPLETE** — Sessions 0–7 done. Non-goal honored: no new features; anything tempting → FUTURE.
+
+---
+
+## Session 8 — Post-build extension: live stress, RSL, VDOT paving, demo polish
+**Date:** 2026-07-16 · **Commits:** `e179f12` (live+paving), `3159ec5` (RSL), `a861cd9` (demo polish)
+
+Four requested features layered onto the finished build — each cited, lean, tested.
+
+**Live stress layer (`src/live.py`, `src/fetch_gages.py`) — commit `e179f12`**
+- Fragility (static score) × **current stress**: NWS active alerts (flood/winter-storm only) intersected
+  with segments; USGS current discharge flagged only when **above its own daily-series median** (no
+  invented flood-stage thresholds); last-7-day wet-week boolean. `watch_score` = static score **gated**
+  by (alert OR elevated gage OR wet week) → `data/watchlist.parquet`.
+- "Right now" toggle recolors the map; every trigger carries a cited, timestamped provenance row and the
+  UI shows its age. Empty alerts → calm "no active stress" banner, never an error. Schema identical
+  across runs (fixed by construction). Nearest-gage enrichment is one-time (`fetch_gages.py`, field
+  names validated vs the live catalog first). ⏸ Gage coverage ~2% (USGS gages are sparse — honest).
+- Non-goals honored: no polling (refresh is a button), no radar tiles, no forecast modeling.
+
+**RSL year-range prediction (`src/service_life.py`) — commit `3159ec5`**
+- Age priority: HPMS Item 54 (Year of Last Improvement, verified in the Field Manual before coding) →
+  VDOT paving → functional-class prior (grade **capped at C**, no treatment year). Never fabricates a
+  treatment year. One visible FHWA-cited literature-lifespan dict (ranges, not points). RSL = expected
+  life **rate-stretched** by the LTPP-relative deterioration rate, minus age → a year **range**
+  (a single-year answer is a bug by definition). `scores.parquet` gains `rsl_year_low/high/basis`.
+- Why-card renders "estimated to reach poor condition YYYY–YYYY (grade B; last treated 2019 per HPMS)";
+  copilot "when" questions get the range + basis and **refuse an exact date**. 2,644 annotated (106
+  VDOT, 2,538 prior). Non-goals: no survival models, no ML — the transparent rate-stretch only.
+
+**VDOT paving (`src/paving.py`)**
+- ArcGIS feature layer → segments. ⚠️ **Contact fields (PM name, phone, email) dropped at ingestion**
+  (`assert_no_contact` guards every stored table; zero contact fields verified). Geometry-first join
+  (same-road overlap ≥ 100 m excludes cross-street artifacts — caught a spurious "E Loudoun St" ↔
+  "…(Loudoun County)" county-token match during the required 5-pair verification; logged in ERRORS.md).
+  Completed → `last_treated_year` basis `vdot_paving`; planned → scheduled flag. `data/plan_comparison.parquet`
+  (3 buckets, disagreement framed as a lens, not an error claim): 508 completed + 160 planned, 265
+  high-risk unscheduled / 4 agreement / 8 scheduled-lower-risk.
+
+**Demo polish — commit `a861cd9`**
+- ✅ `--demo` flag (`SUBGRADE_DEMO` env twin so headless AppTest can reach it): pre-warms caches,
+  snapshots the live layer to `data/demo_snapshot/`, auto-falls back to the snapshot if any live API
+  fails mid-demo. **Airplane-mode safe** — proven, not just claimed: re-ran the render path with
+  `httpx` fully disabled → map + snapshot watchlist + why-card + RSL all render, zero network.
+- ✅ One-command launch: `./run.sh` / `make demo` (snapshot → `streamlit run … -- --demo`).
+- ✅ `WALKTHROUGH.md` rewritten to the timed 30-min arc (problem → question → live demo → LTPP → shortfalls
+  incl. source-attribution drift → data-center-approvals closer → Q&A).
+- ✅ Final dead-code sweep (`code-reviewer` on the diff): two fixes applied — a redundant snapshot reload
+  in the refresh-failure branch (`app.py`), and an over-broad `STATIC_REQUIRED` list requiring artifacts
+  the offline app never reads (`demo.py`). Otherwise clean: no scope creep, provenance/null rules intact.
+- ✅ Doc cross-links verified (README ↔ WALKTHROUGH ↔ ERRORS ↔ shortfalls — no dead references).
+- ✅ `PRD-subgrade.md` updated (commit `b93e2cf`): §8 new sources (NWS, USGS, VDOT paving, HPMS items,
+  FHWA preservation), §10.5 "no real-time tier," §10.6 confirmed source-attribution drift.
+
+**Verified:** ruff clean (`src`+`tests`), **79 tests pass**, offline render path proven with networking
+disabled. Non-goals honored throughout; nothing tempting added — deferrals went to `FUTURE.md`.

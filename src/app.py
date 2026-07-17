@@ -5,6 +5,7 @@ for the selected segment; bottom, the county-copilot chat. Deliberately thin; St
 from __future__ import annotations
 
 import json
+import os
 import sqlite3
 import sys
 from datetime import datetime, timezone
@@ -83,8 +84,16 @@ def provenance_lines(segment_id: int, drivers: list) -> list[str]:
     return lines
 
 
+def demo_mode() -> bool:
+    return "--demo" in sys.argv or bool(os.environ.get("SUBGRADE_DEMO"))
+
+
 def load_watchlist() -> tuple[pd.DataFrame | None, dict]:
+    """Live watch list; in --demo mode fall back to data/demo_snapshot/ so it works offline."""
     wl_path, meta_path = DATA / "watchlist.parquet", DATA / "watchlist_meta.json"
+    if not wl_path.exists() and demo_mode():
+        wl_path, meta_path = DATA / "demo_snapshot" / "watchlist.parquet", \
+            DATA / "demo_snapshot" / "watchlist_meta.json"
     if not wl_path.exists():
         return None, {}
     meta = json.loads(meta_path.read_text()) if meta_path.exists() else {}
@@ -116,6 +125,8 @@ def trigger_lines(triggers_json: str) -> list[str]:
 def main() -> None:
     st.set_page_config(page_title="Subgrade — road deterioration risk", layout="wide")
     st.title("Subgrade — cited road deterioration risk")
+    if demo_mode():
+        st.caption("🎬 DEMO MODE — live layer served from an offline snapshot (airplane-mode safe).")
     scored = load_scored()
 
     # Live "Right now" layer: fragility (static score) vs current stress.
@@ -131,6 +142,7 @@ def main() -> None:
             live.WATCH_META.write_text(json.dumps(m, indent=2))
             watchlist, meta = df, m
         except Exception as exc:  # noqa: BLE001 - keep the last snapshot if live pull fails
+            # watchlist/meta still hold the snapshot loaded above (only overwritten on success).
             st.warning(f"Live refresh failed ({exc}); showing the last snapshot.")
 
     watched_ids = None
