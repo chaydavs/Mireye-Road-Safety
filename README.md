@@ -8,7 +8,7 @@ will deteriorate fastest and why* — with every input traceable to a federal so
 commoditized by connected-vehicle sensing) but "which roads sit on ground conditions that make them
 fail early."
 
-> **Live app: https://web-one-rosy-32.vercel.app** — see [§3 Using the tool](#3-using-the-tool).
+> **Live app: https://subgrade-roads.vercel.app** — see [§3 Using the tool](#3-using-the-tool).
 >
 > Status: working end-to-end prototype on the Leesburg + Ashburn corridor of Loudoun County, VA.
 > Built as a Mireye take-home over 8 disciplined sessions (see `WORKLOG.md`); every model mistake
@@ -54,7 +54,7 @@ road-miles — who today prioritize repaving by visual ratings and complaints. T
 
 ### The live app — no install
 
-**→ https://web-one-rosy-32.vercel.app**
+**→ https://subgrade-roads.vercel.app**
 
 The corridor of Loudoun County, VA, ranked and explained. Four things to do:
 

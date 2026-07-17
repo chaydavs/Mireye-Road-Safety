@@ -5,7 +5,7 @@ Written for building presentation slides. Every number here is real and reproduc
 
 **One-liner:** Subgrade is a *cited cause-layer* for local-road deterioration risk — it predicts which
 roads will fail, from the ground up (soil, water, bedrock, climate, terrain, traffic), with **every input
-traceable to a federal source through Mireye's API**. Live at **https://web-one-rosy-32.vercel.app**.
+traceable to a federal source through Mireye's API**. Live at **https://subgrade-roads.vercel.app**.
 
 **Scope of the demo:** the Leesburg + Ashburn corridor of Loudoun County, VA — **2,644 scored road
 segments** (out of a 15,643-segment full county network).
@@ -293,7 +293,7 @@ denominator — never contributes a fabricated 0).
 - **Web app:** Next.js + MapLibre GL (relative-risk map, why-card, RSL, live status, attribution) —
   **static-first** (pre-generated JSON, no server at runtime). **Copilot = one Vercel serverless
   function** calling Anthropic.
-- **Deployed to production on Vercel:** https://web-one-rosy-32.vercel.app.
+- **Deployed to production on Vercel:** https://subgrade-roads.vercel.app.
 - **No database** — static JSON + stateless serverless by design (a DB would be unused weight).
 
 ---
