@@ -244,7 +244,11 @@ function Copilot() {
   const [q, setQ] = useState("");
   const [busy, setBusy] = useState(false);
   const endRef = useRef<HTMLDivElement>(null);
-  useEffect(() => endRef.current?.scrollIntoView({ behavior: "smooth" }), [msgs, busy]);
+  // Block body (not a concise arrow): a concise arrow returns scrollIntoView()'s value, which React
+  // then treats as this effect's cleanup — throwing "destroy is not a function" on the next run.
+  useEffect(() => {
+    endRef.current?.scrollIntoView({ behavior: "smooth" });
+  }, [msgs, busy]);
 
   async function ask(e: React.FormEvent) {
     e.preventDefault();
